@@ -546,16 +546,20 @@ textarea::placeholder{color:var(--text-tertiary)}
   .layout,.header,.messages,.input-area,.input-wrap,.msg-bubble{transition:none!important}
 }
 @media (max-width: 600px) {
-  .header { padding: 8px 12px; }
-  .messages { padding: 20px 12px 12px; }
-  .input-area { padding: 12px 12px 24px; }
+  .header { padding: 8px 10px; }
+  .messages { padding: 16px 10px 8px; }
+  .input-area { padding: 10px 10px 20px; }
   .alfred-title { font-size: 14px; }
-  .brand-mark { width: 32px; height: 32px; }
-  .empty-title { font-size: 26px !important; }
-  .msg-bubble { max-width: 90%; font-size: 14px; padding: 10px 14px; }
-  .input-wrap { flex-direction: column; align-items: stretch; border-radius: 16px; }
-  .input-wrap .btn-group { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-  textarea { min-height: 32px; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-info { display: none; } /* Hide 'Alfred' text on tiny screens to save room */
+  .empty-title { font-size: 24px !important; }
+  .msg-bubble { max-width: 92%; font-size: 14px; padding: 10px 12px; }
+  .input-wrap { flex-direction: column; align-items: stretch; border-radius: 16px; padding: 8px 12px; }
+  .input-wrap .btn-group { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+  textarea { min-height: 32px; font-size: 14px; }
+  .back-btn span, .status-label { display: none; } /* Hide text labels on mobile */
+  .back-btn { padding: 6px; }
+  .header-right { gap: 8px; }
 }
 </style>
 </head>
@@ -580,7 +584,7 @@ textarea::placeholder{color:var(--text-tertiary)}
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path d="M8 1L3 6l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      Dashboard
+      <span>Dashboard</span>
     </a>
     <div class="status">
       <div class="status-dot" id="statusDot"></div>

@@ -2076,26 +2076,31 @@
     @media (max-width: 600px) {
       .grid, .row-3, .row-main {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
       }
       .wrap {
-        padding: 16px;
+        padding: 12px;
       }
       .card {
-        padding: 16px;
+        padding: 20px 16px;
       }
       .welcome-content h1 {
-        font-size: 28px;
+        font-size: 26px;
         line-height: 1.1;
       }
-      .welcome-time {
-        font-size: 14px;
+      .w-temp {
+        font-size: 48px;
+      }
+      .login-modal {
+        width: min(360px, calc(100vw - 32px));
+        padding: 32px 24px;
+      }
+      .onboarding-modal {
+        width: min(560px, calc(100vw - 24px));
+        padding: 24px 20px;
       }
       .metric-value {
-        font-size: 20px;
-      }
-      .list {
-        gap: 12px;
+        font-size: 18px;
       }
     }
 
