@@ -32,7 +32,21 @@ import asyncio
 import subprocess
 
 load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# We initialize the client inside a helper to prevent crashes during module import 
+# if the GROQ_API_KEY is missing from the environment.
+_client: Optional[Groq] = None
+
+def get_groq_client() -> Groq:
+    global _client
+    if _client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            logger.error("GROQ_API_KEY is missing from the environment!")
+            raise ValueError("GROQ_API_KEY is missing. Please add it to your environment variables.")
+        _client = Groq(api_key=api_key)
+    return _client
+
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,63}$", re.IGNORECASE)
 
 SYSTEM_PROMPT = """You are Alfred, a sharp, deeply personal AI assistant, part chief of staff, part Jarvis.
