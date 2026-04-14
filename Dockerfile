@@ -15,5 +15,6 @@ COPY . .
 # We use 8080 as it is the standard for Railway
 EXPOSE 8080
 
-# Explicitly binding to 8080 to match Railway's internal routing
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Using proxy-headers and forwarded-allow-ips to handle Railway's HTTPS proxy correctly.
+# This prevents CSRF/Login issues on mobile devices.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips='*'"]
