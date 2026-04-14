@@ -295,7 +295,7 @@ async def startup_checks():
     # ── Auto-schedule morning briefings for all existing users ──────────────
     try:
         accounts = await load_accounts()
-        for acct in accounts:
+        for email, acct in accounts.items():
             uid = acct.get("storage_id") or acct.get("user_id")
             name = acct.get("display_name") or acct.get("name") or uid
             prefs_doc = await load_user_document(uid, "preferences") or {}
