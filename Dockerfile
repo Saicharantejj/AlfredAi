@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
-EXPOSE 8000
+# We use 8080 as it is the standard for Railway
+EXPOSE 8080
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Explicitly binding to 8080 to match Railway's internal routing
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
