@@ -1,0 +1,31 @@
+# Environments
+.env
+.env.*
+venv/
+env/
+ENV/
+.venv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Sensitive Data
+credentials.json
+calendar_token.json
+users/
+# If you have any whatsapp session tokens
+whatsapp/.wwebjs_auth/
+whatsapp/.wwebjs_cache/
+
+# Logs
+*.log
+alfred.log
+
+# OS
+.DS_Store

@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alfred — Personal AI OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <!-- Using Inter and JetBrains Mono for a highly technical, premium OS feel -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,500;1,500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Variables ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #030303;
+      --bg-elevated: #0a0a0a;
+      --surface: rgba(255, 255, 255, 0.03);
+      --surface-hover: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.08);
+      
+      --text: #ffffff;
+      --text-muted: #888888;
+      --text-dark: #333333;
+      
+      --accent: #ff0000;
+      --accent-glow: rgba(255, 0, 0, 0.45);
+      
+      --font-sans: 'Inter', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-serif: 'Playfair Display', serif;
+      
+      --ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-snap: cubic-bezier(0.85, 0, 0.15, 1);
+    }
+
+    html, body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* Dot grid background pattern */
+    .dot-grid-bg {
+      position: fixed; inset: 0;
+      z-index: -4; /* place behind the deep red wash */
+      background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+    }
+
+    /* Static deep red wash — more intense */
+    .deep-red-wash {
+      position: fixed; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(35,0,0,0.75) 0%, rgba(20,0,0,0.6) 40%, transparent 70%),
+        linear-gradient(0deg, rgba(25,0,0,0.8) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -2;
+    }
+    /* Ambient glow: stronger red, larger footprint */
+    .ambient-glow {
+      position: fixed;
+      width: 1000px; height: 1000px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,0,0,0.45) 0%, rgba(200,0,0,0.18) 40%, transparent 68%);
+      filter: blur(90px);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 1;
+      z-index: -1;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 5%;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: 24px 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      mix-blend-mode: difference;
+    }
+    .nav-logo {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-style: italic;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      position: relative;
+      padding: 8px 0;
+    }
+    /* scaleX is composite-only; avoids layout recalc from animating width */
+    .nav-btn::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; width: 100%; height: 1px;
+      background: var(--text);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s var(--ease-fluid);
+    }
+    .nav-btn:hover::after { transform: scaleX(1); }
+
+    .btn-solid {
+      background: var(--text);
+      color: var(--bg);
+      padding: 16px 32px;
+      border-radius: 999px;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      font-size: 15px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s var(--ease-snap), background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+      display: inline-flex; justify-content: center; align-items: center;
+    }
+    .btn-solid:hover { background: var(--accent); color: #fff; transform: scale(1.02); box-shadow: 0 8px 24px rgba(255, 0, 0, 0.25); }
+    .btn-solid:active { transform: scale(0.96) !important; background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(255, 0, 0, 0.2); }
+
+    /* ── Hero / Command Center ── */
+    .hero {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      padding-top: 100px; /* push content below fixed nav */
+    }
+    
+    .hero-h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(60px, 10vw, 140px);
+      font-weight: 500;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      margin-bottom: 3vh;
+      opacity: 0;
+      /* Faster: 0.7s instead of 1.2s */
+      animation: revealUp 0.7s var(--ease-fluid) forwards;
+      transition: color 0.4s ease, text-shadow 0.4s ease;
+    }
+
+    .hero-subtitle {
+      font-family: var(--font-mono);
+      font-size: clamp(14px, 1.5vw, 18px);
+      color: var(--text-muted);
+      max-width: 600px;
+      margin-bottom: 8vh;
+      opacity: 0;
+      animation: revealUp 0.7s var(--ease-fluid) 0.1s forwards;
+      transition: color 0.4s ease;
+    }
+
+    /* Used by JS to turn text red as it scrolls up */
+    .text-scrolled-up {
+      color: var(--accent) !important;
+      text-shadow: 0 0 16px rgba(255, 0, 0, 0.2);
+    }
+
+    .command-interface {
+      width: 100%;
+      max-width: 800px;
+      background: rgba(10,10,10,0.75);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(255,0,0,0.12);
+      overflow: hidden;
+      opacity: 0;
+      animation: revealUp 0.7s var(--ease-fluid) 0.2s forwards;
+      position: relative;
+      /* No will-change here: it forces a GPU layer even before any animation */
+      transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .cmd-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cmd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); opacity: 0.3; }
+    .cmd-dot.red { background: #ff5f56; }
+    .cmd-dot.yellow { background: #ffbd2e; }
+    .cmd-dot.green { background: #27c93f; }
+
+    .cmd-body {
+      padding: 40px;
+      min-height: 200px;
+      position: relative;
+    }
+
+    .cmd-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .cmd-chevron {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .cmd-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 24px;
+      font-weight: 400;
+      width: 100%;
+    }
+    .cmd-input::placeholder { color: var(--text-dark); }
+
+    .cmd-output {
+      margin-top: 32px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .output-line { display: none; opacity: 0; transform: translateY(10px); }
+    .output-line.visible {
+      display: flex; align-items: center; gap: 12px;
+      animation: cmdFadeUp 0.4s var(--ease-fluid) forwards;
+    }
+    @keyframes cmdFadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    .status-badge {
+      padding: 4px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+    }
+    .status-badge.success { border-color: rgba(39, 201, 63, 0.4); color: #27c93f; }
+
+    /* ── Scroll Storytelling (Outcome Showcase) ── */
+    .story-section {
+      padding: 150px 0;
+      position: relative;
+    }
+    .story-block {
+      /* Removed min-height: it forces excessive scroll distance and triggers sluggish layout */
+      display: flex;
+      align-items: center;
+      position: relative;
+      padding: 40px 0;
+      opacity: 0; transform: translateY(20px);
+      /* Snappier: 0.6s, reduced translate distance */
+      transition: opacity 0.6s var(--ease-fluid), transform 0.6s var(--ease-fluid);
+    }
+    .story-block.in-view { opacity: 1; transform: translateY(0); }
+    
+    .story-content {
+      width: 50%;
+      padding-right: 8%;
+    }
+    .story-num {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--accent);
+      margin-bottom: 24px;
+      display: block;
+    }
+    .story-h2 {
+      font-size: clamp(32px, 4vw, 56px);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+      line-height: 1.1;
+      transition: color 0.4s ease, text-shadow 0.4s ease;
+    }
+    .story-p {
+      font-size: 18px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      transition: color 0.4s ease;
+    }
+    
+    .story-visual {
+      width: 50%;
+      position: relative;
+    }
+    .visual-glasspane {
+      /* Remove backdrop-filter + box-shadow here to avoid stacked compositing layers */
+      background: rgba(22,22,22,0.85);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+    }
+
+    .mock-message {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .mock-message strong { color: var(--text); font-family: var(--font-sans); font-size: 15px; display: block; margin-bottom: 8px; }
+
+    /* ── CTA Glow ── */
+    .cta-section {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-glow {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 100vw; height: 50vh;
+      background: radial-gradient(circle, rgba(255,0,0,0.2) 0%, transparent 50%);
+      filter: blur(100px); opacity: 1; z-index: -1;
+    }
+
+    /* ── Capability Grid ── */
+    .cap-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin-top: 60px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .cap-cell {
+      padding: 32px 28px;
+      background: rgba(255,255,255,0.02);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.25s ease;
+    }
+    .cap-cell:hover { background: rgba(255,80,0,0.06); }
+    /* Full-width feature cell for the bottom row standout items */
+    .cap-cell-wide {
+      grid-column: 1 / -1;
+      padding: 36px 40px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 48px;
+      transition: background 0.25s ease;
+    }
+    .cap-cell-wide:hover { background: rgba(255,40,0,0.05); }
+    .cap-cell-wide:last-child { border-bottom: none; }
+    .cap-cell-wide .cap-wide-text { flex: 1; }
+    .cap-cell-wide .cap-wide-visual {
+      flex-shrink: 0;
+      width: 340px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .cap-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+    .cap-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .cap-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Comparison Strip ── */
+    .comparison-strip {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 24px;
+      margin: 80px 0;
+      padding: 40px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+    .cmp-side { display: flex; flex-direction: column; gap: 12px; }
+    .cmp-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--text-muted);
+    }
+    .cmp-item .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dot-red { background: var(--accent); }
+    .dot-green { background: #27c93f; }
+    .cmp-label {
+      font-family: var(--font-mono); font-size: 12px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      text-align: center;
+    }
+    .cmp-label.before { color: var(--text-dark); }
+    .cmp-label.after { color: var(--accent); }
+    .cmp-divider { width: 1px; height: 100%; background: var(--border); align-self: stretch; }
+
+    /* ── Privacy Trust Bar ── */
+    .trust-bar {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin: 40px 0 80px;
+    }
+    .trust-item {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .trust-icon { color: var(--accent); font-size: 14px; }
+
+    /* ── Utilities & Specs ── */
+    @keyframes revealUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .text-accent { color: var(--accent); }
+
+    /* ── Auth Modals (Dark Minimalist) ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s var(--ease-fluid);
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+    
+    .modal-box {
+      width: 100%; max-width: 440px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px;
+      transform: translateY(20px) scale(0.98);
+      transition: transform 0.5s var(--ease-fluid);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 40px 100px rgba(0,0,0,0.8);
+      position: relative;
+    }
+    .modal-overlay.active .modal-box { transform: translateY(0) scale(1); }
+    
+    .close-btn {
+      position: absolute; top: 24px; right: 24px;
+      background: none; border: none; font-size: 24px; color: var(--text-muted);
+      cursor: pointer; padding: 4px; border-radius: 50%; transition: color 0.2s;
+    }
+    .close-btn:hover { color: var(--text); }
+    
+    .modal-box h2 {
+      font-family: var(--font-serif);
+      font-size: 32px; font-weight: 500; margin-bottom: 8px; letter-spacing: -0.02em;
+    }
+    .modal-box p { font-size: 15px; color: var(--text-muted); margin-bottom: 32px; }
+    
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 8px; }
+    .form-group input {
+      width: 100%; padding: 16px 0;
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      font-family: var(--font-sans); font-size: 16px; color: var(--text);
+      outline: none; transition: border-color 0.3s;
+    }
+    .form-group input:focus { border-color: var(--text); }
+    
+    .modal-switch { text-align: center; margin-top: 32px; font-size: 14px; color: var(--text-muted); }
+    .modal-switch a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 2px; transition: border-color 0.2s; }
+    .modal-switch a:hover { border-color: var(--text); }
+
+    /* ── Toast: no backdrop-filter, static bg ── */
+    .toast {
+      position: fixed; bottom: 40px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      padding: 12px 24px;
+      background: rgba(30,30,30,0.98);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 13px; font-family: var(--font-mono);
+      opacity: 0; pointer-events: none; z-index: 10000;
+      /* Only animate transform + opacity (compositor-only) */
+      transition: opacity 0.3s ease, transform 0.3s var(--ease-fluid);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 768px) {
+      .story-block { flex-direction: column; align-items: flex-start; gap: 40px; }
+      .story-content, .story-visual { width: 100%; padding-right: 0; }
+      .hero-h1 { line-height: 1; }
+      nav { padding: 24px 5%; }
+    }
+    /* ══════════════════════════════════════════
+       MICRO-ANIMATION SYSTEM — living interface
+       All animations: transform + opacity only
+    ══════════════════════════════════════════ */
+
+    /* 1. Ambient glow breathes — gentle scale pulse */
+    @keyframes glowBreathe {
+      0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.9; }
+      50%       { transform: translate(-50%, -50%) scale(1.18); opacity: 1;   }
+    }
+    .ambient-glow { animation: glowBreathe 8s ease-in-out infinite; }
+
+    /* 2. Command interface floats gently */
+    @keyframes cmdFloat {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-6px); }
+    }
+    /* Applied via JS after load to avoid conflicting with tilt */
+    .cmd-float { animation: cmdFloat 6s ease-in-out infinite; }
+
+    /* 3. Blinking cursor in terminal input */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .cmd-cursor {
+      display: inline-block;
+      width: 2px; height: 1.1em;
+      background: var(--text);
+      vertical-align: middle;
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+
+    /* 4. Red accent dot pulse on nav-logo */
+    @keyframes dotPulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.3); }
+    }
+    .nav-logo-dot {
+      display: inline-block;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--accent);
+      margin-left: 3px;
+      vertical-align: middle;
+      animation: dotPulse 2.4s ease-in-out infinite;
+    }
+
+    /* 5. Trust bar items softly fade-cycle */
+    @keyframes trustPulse {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 1;   }
+    }
+    .trust-item { animation: trustPulse 4s ease-in-out infinite; }
+    .trust-item:nth-child(2) { animation-delay: 0.8s; }
+    .trust-item:nth-child(3) { animation-delay: 1.6s; }
+    .trust-item:nth-child(4) { animation-delay: 2.4s; }
+    .trust-item:nth-child(5) { animation-delay: 3.2s; }
+
+    /* 6. Cursor-proximity highlight on cap cells — JS-driven via opacity */
+    .cap-cell, .cap-cell-wide { position: relative; overflow: hidden; }
+    .cap-cell::after, .cap-cell-wide::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at var(--cx, 50%) var(--cy, 50%), rgba(255,60,0,0.08), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .cap-cell:hover::after, .cap-cell-wide:hover::after { opacity: 1; }
+
+    /* 7. Story sections with parallax-ready class */
+    .parallax-el { will-change: transform; }
+
+    /* 8. Mock-message hover lift */
+    .mock-message {
+      transition: transform 0.3s var(--ease-fluid), opacity 0.3s ease;
+    }
+    .mock-message:hover { transform: translateY(-3px); }
+
+    /* 9. Cmd-dot live pulsing */
+    @keyframes liveDot {
+      0%, 100% { opacity: 0.45; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.4); }
+    }
+    .cmd-dot.red   { animation: liveDot 2s ease-in-out infinite; }
+    .cmd-dot.green { animation: liveDot 2s ease-in-out infinite 0.6s; }
+
+    /* 10. Section separator shimmer line */
+    @keyframes shimmerLine {
+      0%   { transform: scaleX(0); opacity: 0; }
+      40%  { opacity: 1; }
+      100% { transform: scaleX(1); opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="dot-grid-bg"></div>
+  <div class="deep-red-wash"></div>
+  <div class="ambient-glow"></div>
+
+  <nav>
+    <a href="#" class="nav-logo">Alfred.</a>
+    <div class="nav-actions">
+      <button class="nav-btn" onclick="openAuth('login')">Sign In</button>
+      <button class="btn-solid" style="padding: 10px 24px; font-size: 13px;" onclick="openAuth('signup')">Get Started</button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- HERO: The Command Center -->
+    <section class="hero container">
+      <h1 class="hero-h1">Your assistant for<br>getting things done.</h1>
+      <p class="hero-subtitle">Not just answers. Alfred connects to your tools and executes actions for you, straight from chat.</p>
+      
+      <div class="command-interface">
+        <div class="cmd-header">
+          <div class="cmd-dot red"></div>
+          <div class="cmd-dot yellow"></div>
+          <div class="cmd-dot green"></div>
+          <span style="margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); opacity:0.5;">ALFRED_CORE_v2.0</span>
+        </div>
+        <div class="cmd-body">
+          <div class="cmd-input-wrap">
+            <span class="cmd-chevron">❯</span>
+            <input type="text" class="cmd-input" id="cmdInput" placeholder="Awaiting command..." autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="cmd-output" id="cmdOutput">
+            <!-- Simulated execution lines will appear here -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section class="container" style="padding-top: 120px; padding-bottom: 40px;">
+      <div class="story-block" style="min-height: auto; flex-direction: column; text-align: center; max-width: 800px; margin: 0 auto; align-items: center;">
+        <h2 class="story-h2" style="font-size: clamp(28px, 4vw, 48px); margin-bottom: 16px;">Meet your new assistant.</h2>
+        <p class="story-p" style="font-size: 20px;">Alfred isn't built to just chat. Alfred is built to act. By bridging the gap between your calendar, your inbox, and your files, Alfred takes simple commands and executes complex actions across your digital life effortlessly.</p>
+      </div>
+    </section>
+
+    <!-- SCROLL STORY: Deep Integration -->
+    <section class="story-section container" style="padding-top: 60px;">
+      <!-- Story Block 1 -->
+      <div class="story-block">
+        <div class="story-content">
+          <span class="story-num">01 / CAPABILITY</span>
+          <h2 class="story-h2">Handle every message.</h2>
+          <p class="story-p">Connect your email and WhatsApp natively. Alfred intercepts, drafts, and dispatches messages while you stay focused on deep work.</p>
+        </div>
+        <div class="story-visual">
+          <div class="visual-glasspane">
+            <div class="mock-message">
+              <strong>Incoming WhatsApp — Priya M.</strong>
+              "Are we still on for the sync at 4?"
+            </div>
+            <div class="mock-message" style="border-color: var(--accent); background: rgba(255,17,0,0.05); margin-left: 20px;">
+              <strong>Alfred Execution</strong>
+              Auto-replied confirming the 4 PM slot based on calendar availability.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 2 -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content" style="order: 2; padding-right: 0; padding-left: 8%;">
+          <span class="story-num">02 / FOCUS</span>
+          <h2 class="story-h2">Stay on track.</h2>
+          <p class="story-p">Embedded Pomodoro timers, habit tracking, and preemptive task management. Alfred surfaces what matters exactly when it matters.</p>
+        </div>
+        <div class="story-visual" style="order: 1;">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:12px;">
+              <span style="font-family:var(--font-mono); color:var(--text-muted);">Q3 Review Prep</span>
+              <span style="color:var(--accent);">In Progress — 24:00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding-bottom:12px;">
+              <span style="font-family:var(--font-mono); color:var(--text-muted);">Daily Standup Sync</span>
+              <span style="color:var(--text-dark);">Completed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 3 -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content">
+          <span class="story-num">03 / CREATION</span>
+          <h2 class="story-h2">Analyze and format.</h2>
+          <p class="story-p">Drop a disorganized document into the interface, and Alfred instantly analyzes the contents to generate a structured, formatted PowerPoint presentation ready for your next meeting.</p>
+        </div>
+        <div class="story-visual">
+          <div class="visual-glasspane">
+            <div class="mock-message">
+              <strong style="color:var(--text-muted);">User Request</strong>
+              "notes_for_q3.txt" — <em>"Turn these raw notes into a deck."</em>
+            </div>
+            <div class="mock-message" style="border-color: var(--accent); background: rgba(255,0,0,0.05); margin-left: 20px;">
+              <strong>Alfred Execution</strong>
+              <div style="margin-top:12px; display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:var(--text); color:var(--bg); border-radius:99px; font-family:var(--font-sans); font-weight:500;">📽️ Download Q3_Strategy.pptx</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 4: Email -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content" style="order: 2; padding-right: 0; padding-left: 8%;">
+          <span class="story-num">04 / EMAIL</span>
+          <h2 class="story-h2">Write emails in seconds.</h2>
+          <p class="story-p">Tell Alfred what to say. It drafts a complete, professional email, addresses it, and sends it — all from a single sentence.</p>
+        </div>
+        <div class="story-visual" style="order: 1;">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:16px;">
+            <div class="mock-message">
+              <strong style="color:var(--text-muted);">You said</strong>
+              "Email Sarah, tell her I'll be 15 minutes late to the 3pm meeting."
+            </div>
+            <div class="mock-message" style="border-color:var(--accent); background:rgba(255,0,0,0.05);">
+              <strong>Alfred sent</strong>
+              <div style="margin-top:8px; font-size:13px; color:var(--text-muted); line-height:1.6;">
+                <span style="color:var(--text);">To:</span> sarah@company.com<br>
+                <span style="color:var(--text);">Subject:</span> Running a bit late<br><br>
+                Hi Sarah, just a heads up — I'll be about 15 minutes late to our 3pm. See you shortly.
+              </div>
+            </div>
+            <div style="display:inline-flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:12px; color:#27c93f;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#27c93f;display:inline-block;"></span> Sent 2 seconds ago
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 5: Focus Timer -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content">
+          <span class="story-num">05 / FOCUS</span>
+          <h2 class="story-h2">Protect your deep work.</h2>
+          <p class="story-p">Alfred's built-in Pomodoro timer keeps you locked in. Start a focus session and Alfred holds your tasks, messages, and reminders until you're done.</p>
+        </div>
+        <div class="story-visual">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:20px;">
+            <div style="text-align:center; padding: 20px 0;">
+              <div style="font-family:var(--font-mono); font-size:56px; font-weight:400; color:var(--text); letter-spacing:-0.02em; line-height:1;">25:00</div>
+              <div style="font-family:var(--font-mono); font-size:12px; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-top:8px;">Deep Work Session</div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:center;">
+              <div style="padding:8px 20px; background:var(--text); color:var(--bg); border-radius:99px; font-family:var(--font-sans); font-size:13px; font-weight:500; cursor:pointer;">Start Session</div>
+              <div style="padding:8px 20px; border:1px solid var(--border); border-radius:99px; font-family:var(--font-sans); font-size:13px; color:var(--text-muted);">Skip Break</div>
+            </div>
+            <div style="border-top:1px solid var(--border); padding-top:16px; display:flex; justify-content:space-between;">
+              <span style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">Today's sessions</span>
+              <span style="font-family:var(--font-mono); font-size:12px; color:var(--text);">4 completed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 6: Habit Tracking -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content" style="order: 2; padding-right: 0; padding-left: 8%;">
+          <span class="story-num">06 / HABITS</span>
+          <h2 class="story-h2">Build habits that stick.</h2>
+          <p class="story-p">Alfred tracks your daily habits silently in the background. Log a habit in one word. See streaks, misses, and progress across the week without lifting a finger.</p>
+        </div>
+        <div class="story-visual" style="order: 1;">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:20px;">
+            <!-- Habit rows -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family:var(--font-sans); font-size:14px; color:var(--text);">Morning Run</span>
+                <div style="display:flex; gap:6px;">
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--border);"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:rgba(255,255,255,0.05);border:1px dashed var(--border);"></span>
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family:var(--font-sans); font-size:14px; color:var(--text);">Read 20 mins</span>
+                <div style="display:flex; gap:6px;">
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--border);"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:rgba(255,255,255,0.05);border:1px dashed var(--border);"></span>
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family:var(--font-sans); font-size:14px; color:var(--text);">No caffeine after 2pm</span>
+                <div style="display:flex; gap:6px;">
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--border);"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:var(--accent);opacity:0.8;"></span>
+                  <span style="width:22px;height:22px;border-radius:5px;background:rgba(255,255,255,0.05);border:1px dashed var(--border);"></span>
+                </div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--border); padding-top:14px; font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">
+              🔥 Longest streak: <span style="color:var(--accent);">6 days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 7: Smart Reminders -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content">
+          <span class="story-num">07 / TASKS</span>
+          <h2 class="story-h2">Never miss a thing.</h2>
+          <p class="story-p">Tell Alfred once. It picks up the context, sets the time, and reminds you exactly when you need to act — not a minute too early or too late.</p>
+        </div>
+        <div class="story-visual">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:12px;">
+            <div class="mock-message" style="padding:14px 16px;">
+              <strong style="color:var(--text-muted); font-size:12px;">You asked</strong>
+              "Remind me to follow up with the client after the demo call tomorrow."
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#27c93f;flex-shrink:0;"></span>
+                <div>
+                  <div style="font-size:14px; color:var(--text); font-weight:500;">Follow up with client</div>
+                  <div style="font-size:12px; color:var(--text-muted); margin-top:2px; font-family:var(--font-mono);">Tomorrow · After demo call</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; opacity: 0.5;">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--text-dark);flex-shrink:0;"></span>
+                <div>
+                  <div style="font-size:14px; color:var(--text-muted); font-weight:500;">Q3 deck review</div>
+                  <div style="font-size:12px; color:var(--text-muted); margin-top:2px; font-family:var(--font-mono);">Friday · 10:00 AM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 8: Daily Briefing -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content" style="order: 2; padding-right: 0; padding-left: 8%;">
+          <span class="story-num">08 / BRIEFING</span>
+          <h2 class="story-h2">Start every day informed.</h2>
+          <p class="story-p">Each morning Alfred sends you a concise briefing: what's on your agenda, pending tasks, unread messages that need action, and a focus suggestion for the day.</p>
+        </div>
+        <div class="story-visual" style="order: 1;">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:16px;">
+            <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent); text-transform:uppercase; letter-spacing:0.08em;">Good morning · Tue 14 Apr</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; gap:12px; align-items:flex-start;">
+                <span style="color:var(--text-muted); font-size:18px; margin-top:-2px;">📅</span>
+                <div style="font-size:13px; color:var(--text-muted); line-height:1.5;"><span style="color:var(--text); font-weight:500;">3 meetings today.</span> First at 10AM with Sarah. Board call at 3PM.</div>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start;">
+                <span style="color:var(--text-muted); font-size:18px; margin-top:-2px;">✅</span>
+                <div style="font-size:13px; color:var(--text-muted); line-height:1.5;"><span style="color:var(--text); font-weight:500;">2 tasks overdue.</span> Q3 deck and client follow-up need attention.</div>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start;">
+                <span style="color:var(--text-muted); font-size:18px; margin-top:-2px;">💬</span>
+                <div style="font-size:13px; color:var(--text-muted); line-height:1.5;"><span style="color:var(--text); font-weight:500;">1 WhatsApp needs reply.</span> Priya asked about the sync slot.</div>
+              </div>
+              <div style="display:flex; gap:12px; align-items:flex-start;">
+                <span style="color:var(--text-muted); font-size:18px; margin-top:-2px;">⏱️</span>
+                <div style="font-size:13px; color:var(--text-muted); line-height:1.5;"><span style="color:var(--text); font-weight:500;">Focus suggestion:</span> Block 9–11AM for the deck before standup.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXTRA STORIES: 9–11 -->
+    <section class="story-section container" style="padding-top: 60px;">
+
+      <!-- Story Block 9: Document Intelligence -->
+      <div class="story-block">
+        <div class="story-content">
+          <span class="story-num">09 / INTELLIGENCE</span>
+          <h2 class="story-h2">Read any document instantly.</h2>
+          <p class="story-p">Drop a PDF, contract, or report into Alfred. In seconds you get a tight, structured summary with the key points extracted — no reading required.</p>
+        </div>
+        <div class="story-visual">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:16px;">
+            <div class="mock-message" style="display:flex; align-items:center; gap:12px;">
+              <span style="font-size:32px; flex-shrink:0;">📄</span>
+              <div>
+                <div style="font-size:14px; font-weight:600; color:var(--text);">Q3_Financial_Report.pdf</div>
+                <div style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono);">48 pages · 3.2 MB · Uploaded just now</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--border); padding-top:16px;">
+              <div style="font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:12px;">Alfred Summary</div>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; gap:10px;">
+                  <span style="color:var(--accent); font-weight:700; flex-shrink:0; font-family:var(--font-mono);">1.</span>
+                  <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0;">Revenue grew <span style="color:var(--text);">18% YoY</span> to $4.2M. Engineering costs increased 11%, compressing margins slightly to 61%.</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                  <span style="color:var(--accent); font-weight:700; flex-shrink:0; font-family:var(--font-mono);">2.</span>
+                  <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0;">Three new enterprise clients onboarded in August. <span style="color:var(--text);">Churn rate dropped to 2.1%</span>, lowest since founding.</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                  <span style="color:var(--accent); font-weight:700; flex-shrink:0; font-family:var(--font-mono);">3.</span>
+                  <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0;">Board recommends <span style="color:var(--text);">Series B raise of $12M</span> before Q1 next year. CFO to prepare deck by Nov 15.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 10: Smart Reply Suggestions -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content" style="order: 2; padding-right: 0; padding-left: 8%;">
+          <span class="story-num">10 / COMMUNICATION</span>
+          <h2 class="story-h2">Reply in one click.</h2>
+          <p class="story-p">When a message comes in, Alfred reads it and drafts three context-aware reply options — each with a different tone. You pick the one that fits. No typing needed.</p>
+        </div>
+        <div class="story-visual" style="order: 1;">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:16px;">
+            <div class="mock-message" style="padding:14px 16px;">
+              <strong style="color:var(--text-muted); font-size:12px;">Incoming · Rohan K.</strong>
+              "Hey, are you free this weekend to review the pitch deck together?"
+            </div>
+            <div style="font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent);">Alfred suggests</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="padding:12px 16px; border:1px solid var(--border); border-radius:12px; font-size:13px; color:var(--text-muted); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,80,0,0.06)'" onmouseout="this.style.background='transparent'">
+                <span style="color:var(--text-dark); font-family:var(--font-mono); font-size:10px; display:block; margin-bottom:4px;">CASUAL</span>
+                "Yes! Saturday works for me. Morning or afternoon?"
+              </div>
+              <div style="padding:12px 16px; border:1px solid var(--border); border-radius:12px; font-size:13px; color:var(--text-muted); cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,80,0,0.06)'" onmouseout="this.style.background='transparent'">
+                <span style="color:var(--text-dark); font-family:var(--font-mono); font-size:10px; display:block; margin-bottom:4px;">PROFESSIONAL</span>
+                "I'm available Saturday afternoon. Shall we set up a 90-minute session?"
+              </div>
+              <div style="padding:12px 16px; border:1px solid rgba(255,0,0,0.3); border-radius:12px; font-size:13px; color:var(--text-muted); cursor:pointer; background:rgba(255,0,0,0.04);">
+                <span style="color:var(--accent); font-family:var(--font-mono); font-size:10px; display:block; margin-bottom:4px;">BRIEF</span>
+                "Sure — Sat 3PM?"
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Block 11: Meeting Intelligence -->
+      <div class="story-block" style="margin-top: 10vh;">
+        <div class="story-content">
+          <span class="story-num">11 / MEETINGS</span>
+          <h2 class="story-h2">Never take notes again.</h2>
+          <p class="story-p">Paste in a meeting transcript or recording, and Alfred extracts every action item, decision, and follow-up — formatted, attributed, and ready to share.</p>
+        </div>
+        <div class="story-visual">
+          <div class="visual-glasspane" style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:18px;">🎙️</span>
+              <div>
+                <div style="font-size:13px; font-weight:600; color:var(--text);">Weekly Sync · Tue 14 Apr · 47 min</div>
+                <div style="font-family:var(--font-mono); font-size:11px; color:var(--accent); margin-top:2px;">Transcript processed</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--border); padding-top:14px; display:flex; flex-direction:column; gap:10px;">
+              <div style="font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted);">Action Items</div>
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:5px;"></span>
+                <div style="font-size:13px; color:var(--text-muted);"><span style="color:var(--text);">Priya</span> — Send revised budget to finance by Friday</div>
+              </div>
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:5px;"></span>
+                <div style="font-size:13px; color:var(--text-muted);"><span style="color:var(--text);">You</span> — Schedule design review with the product team next week</div>
+              </div>
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <span style="width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:5px;"></span>
+                <div style="font-size:13px; color:var(--text-muted);"><span style="color:var(--text);">Rohan</span> — Circulate updated pitch deck before the investor call</div>
+              </div>
+              <div style="margin-top:4px; padding-top:12px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">Key decision: Launch postponed to Q4</div>
+                <div style="padding:4px 12px; background:var(--text); color:var(--bg); border-radius:99px; font-size:11px; font-weight:600; cursor:pointer;">Share</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- WHAT ALFRED CAN DO: Capability Grid -->
+
+    <section class="container" style="padding: 100px 0 40px;">
+      <div class="story-block" style="flex-direction: column; text-align: center; align-items: center; padding: 0;">
+        <span style="font-family:var(--font-mono); font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); margin-bottom:16px; display:block;">Everything Alfred does</span>
+        <h2 class="story-h2" style="font-size: clamp(28px,4vw,52px);">One assistant. Every action.</h2>
+        <p class="story-p" style="max-width:560px; margin: 0 auto;">Built to do the work you usually context-switch for. Across every tool, in a single interface.</p>
+      </div>
+        <!-- First 3: Standard cells, row 1 -->
+        <div class="cap-cell">
+          <span class="cap-icon">📨</span>
+          <div class="cap-title">Email Assistant</div>
+          <div class="cap-desc">Draft, send, and summarize emails in plain English. Alfred connects to Gmail and SMTP.</div>
+        </div>
+        <div class="cap-cell">
+          <span class="cap-icon">💬</span>
+          <div class="cap-title">WhatsApp Messaging</div>
+          <div class="cap-desc">Send and receive WhatsApp messages directly without picking up your phone.</div>
+        </div>
+        <div class="cap-cell">
+          <span class="cap-icon">✅</span>
+          <div class="cap-title">Task Management</div>
+          <div class="cap-desc">Create reminders, task lists, and deadlines with a single command.</div>
+        </div>
+        <!-- Second 3: Standard cells, row 2 -->
+        <div class="cap-cell" style="border-bottom:none;">
+          <span class="cap-icon">⏱️</span>
+          <div class="cap-title">Focus Timer</div>
+          <div class="cap-desc">Built-in Pomodoro timer to keep you in deep work and protect your time.</div>
+        </div>
+        <div class="cap-cell" style="border-bottom:none;">
+          <span class="cap-icon">📊</span>
+          <div class="cap-title">Habit Tracking</div>
+          <div class="cap-desc">Log daily habits, track streaks, and let Alfred nudge you when you miss.</div>
+        </div>
+        <div class="cap-cell" style="border-bottom:none; border-right:none;">
+          <span class="cap-icon">🎙️</span>
+          <div class="cap-title">Meeting Intelligence</div>
+          <div class="cap-desc">Paste a transcript and get action items, decisions, and follow-ups instantly.</div>
+        </div>
+        <!-- Full-width feature: Presentation Generator -->
+        <div class="cap-cell-wide">
+          <div class="cap-wide-text">
+            <span class="cap-icon" style="font-size:36px;">📑</span>
+            <div class="cap-title" style="font-size:18px; margin-bottom:8px;">Presentation Generator</div>
+            <div class="cap-desc" style="font-size:14px; max-width:420px;">Drop in raw meeting notes, bullet points, or a voice memo. Alfred structures, formats, and exports a ready-to-present PowerPoint deck — in seconds, not hours.</div>
+            <div style="margin-top:16px; display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">↳ Supports .pptx · Google Slides · PDF</div>
+          </div>
+          <div class="cap-wide-visual">
+            <div style="color:var(--accent); margin-bottom:8px; font-size:11px; text-transform:uppercase; letter-spacing:0.08em;">alfred@shell</div>
+            <div><span style="color:var(--text);">input</span>   notes_q4.txt</div>
+            <div><span style="color:var(--text);">slides</span>  12 generated</div>
+            <div><span style="color:var(--text);">layout</span>  title, agenda, 9 content, CTA</div>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); color:#27c93f;">✓ Q4_Strategy.pptx ready to download</div>
+          </div>
+        </div>
+        <!-- Full-width feature: Document Intelligence -->
+        <div class="cap-cell-wide">
+          <div class="cap-wide-text">
+            <span class="cap-icon" style="font-size:36px;">📄</span>
+            <div class="cap-title" style="font-size:18px; margin-bottom:8px;">Document Intelligence</div>
+            <div class="cap-desc" style="font-size:14px; max-width:420px;">Drop any PDF — financial report, contract, research paper — and Alfred extracts numbered key takeaways, flags risks, and surfaces the one sentence you actually need to act on.</div>
+            <div style="margin-top:16px; display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">↳ Supports PDF · DOCX · TXT</div>
+          </div>
+          <div class="cap-wide-visual">
+            <div style="color:var(--accent); margin-bottom:8px; font-size:11px; text-transform:uppercase; letter-spacing:0.08em;">Summary · 48-page report</div>
+            <div style="display:flex; gap:8px; margin-bottom:6px;"><span style="color:var(--accent); font-weight:700;">1.</span><span>Revenue grew 18% YoY to $4.2M</span></div>
+            <div style="display:flex; gap:8px; margin-bottom:6px;"><span style="color:var(--accent); font-weight:700;">2.</span><span>Churn dropped to 2.1% — lowest ever</span></div>
+            <div style="display:flex; gap:8px;"><span style="color:var(--accent); font-weight:700;">3.</span><span>Board recommends Series B raise of $12M</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON STRIP -->
+    <section class="container">
+      <div class="comparison-strip story-block" style="padding: 40px;">
+        <div class="cmp-side">
+          <div class="cmp-label before">Without Alfred</div>
+          <div class="cmp-item"><span class="dot dot-red"></span>Switch between 5 apps to send one message</div>
+          <div class="cmp-item"><span class="dot dot-red"></span>Forget tasks buried in long email threads</div>
+          <div class="cmp-item"><span class="dot dot-red"></span>Copy-paste data to format a presentation</div>
+          <div class="cmp-item"><span class="dot dot-red"></span>Lose focus every time a new notification arrives</div>
+        </div>
+        <div class="cmp-divider"></div>
+        <div class="cmp-side" style="text-align:right; align-items:flex-end;">
+          <div class="cmp-label after">With Alfred</div>
+          <div class="cmp-item" style="flex-direction:row-reverse;"><span class="dot dot-green"></span>One command. Message sent.</div>
+          <div class="cmp-item" style="flex-direction:row-reverse;"><span class="dot dot-green"></span>Alfred tracks tasks and reminds you automatically</div>
+          <div class="cmp-item" style="flex-direction:row-reverse;"><span class="dot dot-green"></span>Upload notes, download the deck</div>
+          <div class="cmp-item" style="flex-direction:row-reverse;"><span class="dot dot-green"></span>Alfred handles it. You stay focused.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRIVACY / TRUST BAR -->
+    <section class="container">
+      <div class="trust-bar">
+        <div class="trust-item"><span class="trust-icon">🔒</span> End-to-End Secure</div>
+        <div class="trust-item"><span class="trust-icon">⚡</span> Real-Time Actions</div>
+        <div class="trust-item"><span class="trust-icon">🛠️</span> Self-Hostable</div>
+        <div class="trust-item"><span class="trust-icon">🔑</span> Your Keys, Your Data</div>
+        <div class="trust-item"><span class="trust-icon">📡</span> Multi-Platform</div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+      <div class="cta-glow"></div>
+      <div class="container">
+        <h1 class="hero-h1" style="font-size: clamp(40px, 8vw, 100px); animation:none; opacity:1;">Get things done.</h1>
+        <p class="hero-subtitle" style="margin: 0 auto 40px; animation:none; opacity:1;">Stop switching tabs. Start acting.</p>
+        <button class="btn-solid" onclick="openAuth('signup')">Start using Alfred</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- AUTH MODALS -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-box">
+      <button class="close-btn" onclick="closeAuth()">×</button>
+      
+      <div id="loginForm">
+        <h2>Sign In</h2>
+        <p>Access your assistant.</p>
+        <form onsubmit="handleAuth(event, 'login')">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="loginEmail" required placeholder="name@domain.com">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn-solid" style="width:100%; margin-top:24px;">Sign In</button>
+        </form>
+        <div class="modal-switch"><a href="#" onclick="switchAuth('signup'); return false;">Create an account</a></div>
+      </div>
+
+      <div id="signupForm" style="display:none;">
+        <h2>Sign Up</h2>
+        <p>Set up your personal assistant.</p>
+        <form onsubmit="handleAuth(event, 'register')">
+          <div class="form-group">
+            <label>Designation (Name)</label>
+            <input type="text" id="signupName" required placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label>Secure Identity (Email)</label>
+            <input type="email" id="signupEmail" required placeholder="name@domain.com">
+          </div>
+          <div class="form-group">
+            <label>Access Key (Password)</label>
+            <input type="password" id="signupPassword" required minlength="6" placeholder="At least 6 characters">
+          </div>
+          <button type="submit" class="btn-solid" style="width:100%; margin-top:24px;">Get Started</button>
+        </form>
+        <div class="modal-switch"><a href="#" onclick="switchAuth('login'); return false;">Log in to existing account</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="systemToast">System message</div>
+
+  <script>
+    /* ── UI Logic ── */
+    const toast = document.getElementById('systemToast');
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Scroll Observer: disconnect after triggering (fire-once, not continuous)
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+          obs.unobserve(entry.target); // stop watching — saves CPU on scroll
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.story-block').forEach(el => observer.observe(el));
+
+    /* 3D Tilt: cache rect, only recompute on resize */
+    const heroSection = document.querySelector('.hero');
+    const cmdInterface = document.querySelector('.command-interface');
+
+    if (heroSection && cmdInterface) {
+      let tiltRaf = null;
+      let targetTiltX = 0, targetTiltY = 0;
+      let currentTiltX = 0, currentTiltY = 0;
+      let heroRect = heroSection.getBoundingClientRect();
+
+      // Re-cache rect on resize only (not on every mousemove)
+      window.addEventListener('resize', () => {
+        heroRect = heroSection.getBoundingClientRect();
+      }, { passive: true });
+
+      heroSection.addEventListener('mousemove', e => {
+        const x = (e.clientX - heroRect.left) / heroRect.width;
+        const y = (e.clientY - heroRect.top) / heroRect.height;
+        targetTiltX = (y - 0.5) * -6;
+        targetTiltY = (x - 0.5) * 6;
+        if (!tiltRaf) tiltRaf = requestAnimationFrame(animateTilt);
+      }, { passive: true });
+
+      function animateTilt() {
+        currentTiltX += (targetTiltX - currentTiltX) * 0.12;
+        currentTiltY += (targetTiltY - currentTiltY) * 0.12;
+        cmdInterface.style.transform =
+          `perspective(1000px) rotateX(${currentTiltX.toFixed(2)}deg) rotateY(${currentTiltY.toFixed(2)}deg)`;
+        if (Math.abs(targetTiltX - currentTiltX) > 0.01 || Math.abs(targetTiltY - currentTiltY) > 0.01) {
+          tiltRaf = requestAnimationFrame(animateTilt);
+        } else {
+          cmdInterface.style.transform = '';
+          tiltRaf = null;
+        }
+      }
+
+      heroSection.addEventListener('mouseleave', () => {
+        targetTiltX = 0;
+        targetTiltY = 0;
+        if (!tiltRaf) tiltRaf = requestAnimationFrame(animateTilt);
+      });
+    }
+
+    /* ── Hero Terminal Simulation ── */
+    const cmdInput = document.getElementById('cmdInput');
+    const cmdOutput = document.getElementById('cmdOutput');
+    let isExecuting = false;
+
+    /* Terminal: faster, smarter — delays cut from 2.2s total to ~0.9s */
+    async function executeCommand() {
+      const query = cmdInput.value.trim();
+      if (!query || isExecuting) return;
+
+      isExecuting = true;
+      cmdInput.blur();
+      cmdInput.style.opacity = '0.4';
+      cmdOutput.innerHTML = '';
+
+      // Intent-aware responses
+      let action = 'Action completed.';
+      if (/email|mail|send/i.test(query)) action = 'Email drafted and queued.';
+      else if (/whatsapp|message|msg/i.test(query)) action = 'Message sent via WhatsApp.';
+      else if (/remind|task|todo/i.test(query)) action = 'Reminder created.';
+      else if (/deck|present|slides/i.test(query)) action = 'Presentation generated.';
+
+      const lines = [
+        { text: `Analysing: "${query}"`,      delay: 120, badge: 'PRCS' },
+        { text: 'Routing to action engine...',   delay: 250, badge: 'PRCS' },
+        { text: action,                          delay: 200, badge: 'SUCCESS' },
+      ];
+
+      // Build fragment once per line — minimize reflows
+      const frag = document.createDocumentFragment();
+      for (const line of lines) {
+        await new Promise(r => setTimeout(r, line.delay));
+        const el = document.createElement('div');
+        el.className = 'output-line visible';
+        el.innerHTML = `<span class="status-badge${line.badge === 'SUCCESS' ? ' success' : ''}">${line.badge}</span> <span>${line.text}</span>`;
+        cmdOutput.appendChild(el);
+      }
+
+      showToast('Done.');
+      await new Promise(r => setTimeout(r, 1200));
+      cmdOutput.innerHTML = '';
+      cmdInput.value = '';
+      cmdInput.style.opacity = '1';
+      cmdInput.focus();
+      isExecuting = false;
+    }
+
+    cmdInput.addEventListener('keydown', e => { if (e.key === 'Enter') executeCommand(); });
+
+    /* ── Magnetic Button Effect ── */
+    document.querySelectorAll('.btn-solid').forEach(btn => {
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width/2;
+        const y = e.clientY - rect.top - rect.height/2;
+        btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transform = `translate(0px, 0px)`;
+      });
+    });
+
+    /* ── Ambient Glow: moves via translate() (GPU-only, 0 paint cost) ── */
+    const ambientGlow = document.querySelector('.ambient-glow');
+    if (ambientGlow && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let glowX = window.innerWidth / 2;
+      let glowY = window.innerHeight / 2;
+      let targetGlowX = glowX;
+      let targetGlowY = glowY;
+      let glowDirty = false;
+
+      // Only record position on move — do NOT call style in the event handler
+      window.addEventListener('mousemove', e => {
+        targetGlowX = e.clientX;
+        targetGlowY = e.clientY;
+        glowDirty = true;
+      }, { passive: true });
+
+      // Apply in rAF: lerp current → target, write transform once per frame
+      function glowTick() {
+        if (glowDirty) {
+          glowX += (targetGlowX - glowX) * 0.06;
+          glowY += (targetGlowY - glowY) * 0.06;
+          // translate is compositor-only — no paint, no layout
+          ambientGlow.style.transform = `translate(calc(-50% + ${(glowX - window.innerWidth/2).toFixed(1)}px), calc(-50% + ${(glowY - window.innerHeight/2).toFixed(1)}px))`;
+          if (Math.abs(targetGlowX - glowX) < 0.5 && Math.abs(targetGlowY - glowY) < 0.5) glowDirty = false;
+        }
+        requestAnimationFrame(glowTick);
+      }
+      requestAnimationFrame(glowTick);
+    }
+
+    /* ── Auth Logic ── */
+    let csrfToken = null;
+
+    async function initAuth() {
+      try {
+        const res = await fetch('/api/auth/csrf', { method: 'POST', credentials: 'same-origin' });
+        if (res.ok) csrfToken = (await res.json()).csrf_token;
+      } catch(e) { console.error('CSRF error', e); }
+
+      const token = localStorage.getItem('alfred_token');
+      if (token && token !== 'undefined') {
+        try {
+          const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` }});
+          if (res.ok) {
+            const data = await res.json();
+            window.location.href = data.needs_onboarding ? '/onboarding' : '/dashboard';
+          }
+        } catch(e) {}
+      }
+    }
+    initAuth();
+
+    function openAuth(type) {
+      document.getElementById('authModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      switchAuth(type);
+    }
+    function closeAuth() {
+      document.getElementById('authModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    function switchAuth(type) {
+      document.getElementById('loginForm').style.display = type === 'login' ? 'block' : 'none';
+      document.getElementById('signupForm').style.display = type === 'signup' ? 'block' : 'none';
+    }
+
+    document.getElementById('authModal').addEventListener('click', e => {
+      if (e.target.id === 'authModal') closeAuth();
+    });
+
+    async function handleAuth(e, endpoint) {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Authenticating...';
+
+      const payload = {};
+      if (endpoint === 'login') {
+        payload.email = document.getElementById('loginEmail').value;
+        payload.password = document.getElementById('loginPassword').value;
+      } else {
+        payload.name = document.getElementById('signupName').value;
+        payload.email = document.getElementById('signupEmail').value;
+        payload.password = document.getElementById('signupPassword').value;
+        payload.accepts_terms = true;
+      }
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
+      try {
+        const res = await fetch('/api/auth/' + endpoint, {
+          method: 'POST', headers, body: JSON.stringify(payload), credentials: 'same-origin'
+        });
+        const data = await res.json();
+
+        if (res.ok && data.ok !== false) {
+          localStorage.setItem('alfred_token', data.access_token);
+          if (csrfToken) localStorage.setItem('alfred_csrf', csrfToken);
+          
+          const usrRes = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${data.access_token}` }});
+          const usrData = await usrRes.json();
+          window.location.href = usrData.needs_onboarding ? '/onboarding' : '/dashboard';
+        } else {
+          showToast(data.detail || 'Authentication failed');
+          btn.disabled = false;
+          btn.textContent = origText;
+        }
+      } catch (err) {
+        showToast('System configuration error.');
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+  </script>
+
+  <script>
+  /* ══════════════════════════════════════════
+     MICRO-MOTION ENGINE — lightweight, transform + opacity only
+  ══════════════════════════════════════════ */
+  (function() {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+
+    /* ── 1. Floating command interface (only when not being tilted) ── */
+    let isTilting = false;
+    const cmdIface = document.querySelector('.command-interface');
+    const heroEl   = document.querySelector('.hero');
+    if (cmdIface) {
+      // Add float class only when mouse leaves hero
+      if (heroEl) {
+        heroEl.addEventListener('mouseenter', () => { isTilting = true;  cmdIface.classList.remove('cmd-float'); });
+        heroEl.addEventListener('mouseleave', () => { isTilting = false; cmdIface.classList.add('cmd-float'); });
+      }
+      // Start floating after reveal animation completes
+      setTimeout(() => { if (!isTilting) cmdIface.classList.add('cmd-float'); }, 900);
+    }
+
+    /* ── 2. Blinking cursor injected after placeholder ── */
+    const cmdInput = document.getElementById('cmdInput');
+    if (cmdInput) {
+      const cursor = document.createElement('span');
+      cursor.className = 'cmd-cursor';
+      cmdInput.parentElement.appendChild(cursor);
+      // Hide cursor while user is typing
+      cmdInput.addEventListener('focus', () => cursor.style.display = 'none');
+      cmdInput.addEventListener('blur',  () => cursor.style.display = '');
+    }
+
+    /* ── 3. Rotating placeholder — simulates Alfred thinking ── */
+    if (cmdInput) {
+      const prompts = [
+        'Ask Alfred anything...',
+        'Send a WhatsApp to Priya...',
+        'Set a reminder for 5pm...',
+        'Summarise my last 5 emails...',
+        'Draft a reply to the client...',
+        'Start a 25 min focus session...',
+        'What\'s on my agenda today?',
+      ];
+      let pi = 0;
+      function rotatePlaceholder() {
+        if (document.activeElement === cmdInput) return;
+        pi = (pi + 1) % prompts.length;
+        cmdInput.style.transition = 'opacity 0.3s ease';
+        cmdInput.style.opacity = '0';
+        setTimeout(() => {
+          cmdInput.placeholder = prompts[pi];
+          cmdInput.style.opacity = '0.4';
+        }, 300);
+      }
+      setInterval(rotatePlaceholder, 3200);
+    }
+
+    /* ── 4. Nav logo — add pulsing red dot ── */
+    const logo = document.querySelector('.nav-logo');
+    if (logo) {
+      const dot = document.createElement('span');
+      dot.className = 'nav-logo-dot';
+      logo.appendChild(dot);
+    }
+
+    /* ── 5. Scroll-driven parallax on story visuals and Text Red-Out ── */
+    const parallaxTargets = [];
+    document.querySelectorAll('.story-visual').forEach(el => {
+      el.classList.add('parallax-el');
+      parallaxTargets.push(el);
+    });
+
+    const scrollTextEls = document.querySelectorAll('.hero-h1, .hero-subtitle, .story-h2, .story-p');
+
+    let scrollRaf = null;
+
+    function applyParallax() {
+      const scrollY = window.scrollY;
+      const vh = window.innerHeight;
+      
+      parallaxTargets.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const center = rect.top + rect.height / 2 - window.innerHeight / 2;
+        // Max ±18px; very slow drift
+        const shift = Math.max(-18, Math.min(18, center * 0.04));
+        el.style.transform = `translateY(${shift.toFixed(2)}px)`;
+      });
+
+      // Turn text red as it scrolls up. 
+      // Hero text needs a tighter threshold to avoid being red on initial load.
+      scrollTextEls.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const isHero = el.classList.contains('hero-h1') || el.classList.contains('hero-subtitle');
+        const threshold = isHero ? vh * 0.10 : vh * 0.40;
+        
+        if (rect.top < threshold && rect.bottom > 0) {
+          el.classList.add('text-scrolled-up');
+        } else {
+          el.classList.remove('text-scrolled-up');
+        }
+      });
+      
+      scrollRaf = null;
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!scrollRaf) scrollRaf = requestAnimationFrame(applyParallax);
+    }, { passive: true });
+
+    /* ── 6. Cursor-proximity glow on capability cells ── */
+    document.querySelectorAll('.cap-cell, .cap-cell-wide').forEach(cell => {
+      cell.addEventListener('mousemove', e => {
+        const r = cell.getBoundingClientRect();
+        const cx = ((e.clientX - r.left) / r.width  * 100).toFixed(1) + '%';
+        const cy = ((e.clientY - r.top)  / r.height * 100).toFixed(1) + '%';
+        cell.style.setProperty('--cx', cx);
+        cell.style.setProperty('--cy', cy);
+      }, { passive: true });
+    });
+
+    /* ── 7. Subtle page-cursor parallax on hero headline ── */
+    const heroH1 = document.querySelector('.hero-h1');
+    const heroSub = document.querySelector('.hero-subtitle');
+    if (heroH1) {
+      window.addEventListener('mousemove', e => {
+        const xFrac = (e.clientX / window.innerWidth  - 0.5); // -0.5 → 0.5
+        const yFrac = (e.clientY / window.innerHeight - 0.5);
+        // Max ±5px horizontal, ±3px vertical — barely perceptible
+        heroH1.style.transform  = `translate(${(xFrac * 5).toFixed(2)}px, ${(yFrac * 3).toFixed(2)}px)`;
+        if (heroSub) heroSub.style.transform = `translate(${(xFrac * 3).toFixed(2)}px, ${(yFrac * 2).toFixed(2)}px)`;
+      }, { passive: true });
+    }
+
+    /* ── 8. Live status indicator in terminal header ── */
+    const cmdHeader = document.querySelector('.cmd-header');
+    if (cmdHeader) {
+      const statusEl = document.createElement('span');
+      statusEl.style.cssText = 'margin-right:8px; font-family:var(--font-mono); font-size:10px; color:#27c93f; letter-spacing:0.06em;';
+      const statuses = ['● RUNNING', '● ACTIVE', '● READY', '● LISTENING'];
+      let si = 0;
+      statusEl.textContent = statuses[0];
+      // Insert before the version span
+      const versionSpan = cmdHeader.querySelector('span');
+      if (versionSpan) cmdHeader.insertBefore(statusEl, versionSpan);
+      setInterval(() => {
+        statusEl.style.opacity = '0';
+        setTimeout(() => {
+          si = (si + 1) % statuses.length;
+          statusEl.textContent = statuses[si];
+          statusEl.style.transition = 'opacity 0.5s ease';
+          statusEl.style.opacity = '1';
+        }, 300);
+      }, 4000);
+    }
+
+  })();
+  </script>
+</body>
+</html>

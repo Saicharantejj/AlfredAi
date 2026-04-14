@@ -1,0 +1,17 @@
+.DS_Store
+.env
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+alfred/venv/
+backups/
+logs/
+users/
+venv/
+whatsapp/node_modules/
+whatsapp/.wwebjs_auth/
+whatsapp/.wwebjs_cache/

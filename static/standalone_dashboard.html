@@ -1,0 +1,4321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alfred — Dashboard</title>
+  <meta name="description" content="Alfred AI Command Center" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@300;400&display=swap"
+    rel="stylesheet" />
+  <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      /* Shared Tokens */
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'Geist Mono', monospace;
+      --r: 28px; 
+      --r-sm: 12px;
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+      /* Accent Colors */
+      --red: #ff1100;
+      --blue: #007aff;
+      --indigo: #5856d6;
+      --green: #34c759;
+      --orange: #ff9500;
+      --violet: #af52de;
+
+      /* Light Theme (Default) */
+      --bg: #fdf5f5;
+      --surface: rgba(255, 255, 255, 0.75);
+      --border: rgba(0, 0, 0, 0.05);
+      --text: #111111;
+      --text-2: #555555;
+      --text-3: #999999;
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0a0505;
+      --surface: rgba(18, 18, 18, 0.7);
+      --border: rgba(255, 255, 255, 0.05);
+      --text: #ffffff;
+      --text-2: #888888;
+      --text-3: #555555;
+      --shadow-sm: 0 4px 12px rgba(255, 0, 0, 0.1);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+      --shadow-lg: 0 24px 64px rgba(0, 0, 0, 1);
+    }
+
+    /* Grain Texture Overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      transition: background-color 0.4s var(--ease-out), color 0.4s var(--ease-out);
+    }
+
+    .add-input {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      transition: all 0.3s var(--ease-out);
+      outline: none;
+    }
+
+    .spline-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: all; 
+      opacity: 0.8;
+      transition: opacity 1s ease;
+    }
+
+    [data-theme="dark"] .spline-bg {
+      opacity: 0.6;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: -20%;
+      pointer-events: none;
+      z-index: -1;
+      background:
+        radial-gradient(circle at var(--field-x, 50%) var(--field-y, 50%), hsla(0, 95%, 65%, 0.1), transparent 30%),
+        radial-gradient(circle at var(--field-x2, 60%) var(--field-y2, 40%), hsla(340, 100%, 65%, 0.08), transparent 25%),
+        radial-gradient(circle at calc(var(--field-x, 50%) - 15%) calc(var(--field-y, 50%) + 10%), hsla(10, 90%, 70%, 0.07), transparent 28%);
+      opacity: 0.7;
+      transition: opacity 1s var(--ease-out);
+    }
+
+    .gravity-layer {
+      position: fixed;
+      inset: -8%;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .gravity-blob {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      will-change: transform;
+      opacity: 0.34;
+      filter: blur(54px);
+    }
+
+    .gravity-blob.one {
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, hsla(0, 95%, 68%, 0.34) 0%, hsla(0, 95%, 68%, 0.08) 55%, transparent 74%);
+    }
+
+    .gravity-blob.two {
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, hsla(350, 88%, 65%, 0.28) 0%, hsla(350, 88%, 65%, 0.08) 56%, transparent 76%);
+    }
+
+    .gravity-blob.three {
+      width: 230px;
+      height: 230px;
+      background: radial-gradient(circle, hsla(330, 100%, 66%, 0.24) 0%, hsla(330, 100%, 66%, 0.07) 52%, transparent 74%);
+    }
+
+    .gravity-blob.four {
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, hsla(15, 92%, 68%, 0.20) 0%, hsla(15, 92%, 68%, 0.06) 55%, transparent 74%);
+    }
+
+    /* ── Ambient orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(100px);
+      opacity: 0.35
+    }
+
+    .orb-1 {
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, hsla(0, 85%, 60%, 0.40), transparent 70%);
+      top: -160px;
+      right: -110px;
+      animation: orbFloat 14s ease-in-out infinite
+    }
+
+    .orb-2 {
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, hsla(340, 95%, 65%, 0.25), transparent 70%);
+      bottom: -110px;
+      left: -90px;
+      animation: orbFloat 18s ease-in-out infinite reverse
+    }
+
+    .orb-3 {
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, hsla(10, 95%, 60%, 0.22), transparent 70%);
+      top: 40%;
+      left: -60px;
+      animation: orbFloat 22s ease-in-out 4s infinite
+    }
+
+    @keyframes orbFloat {
+
+      0%,
+      100% {
+        transform: translate(0, 0)
+      }
+
+      40% {
+        transform: translate(40px, -30px)
+      }
+
+      70% {
+        transform: translate(-25px, 20px)
+      }
+    }
+
+    .wrap {
+      padding: 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Navbar ── */
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      padding: 0 0 20px 0;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      background: var(--red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(255, 17, 0, 0.2);
+      transition: all 0.4s var(--ease-spring);
+      cursor: pointer;
+    }
+
+    .brand-mark:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 32px rgba(255, 17, 0, 0.35);
+    }
+
+    .brand-mark span {
+      color: #000;
+      font-weight: 900;
+      font-size: 20px;
+    }
+
+    .brand-info .name {
+      font-family: var(--font-sans);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+    }
+
+    .brand-info .sub {
+      font-size: 10px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .top-right {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .top-right a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: color 0.3s;
+    }
+
+    .top-right a:hover {
+      color: var(--red);
+    }
+
+    .btn {
+      padding: 10px 24px;
+      border-radius: var(--r-sm);
+      border: none;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s var(--ease-out);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-dark {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .btn-dark:hover {
+      background: var(--red);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    .btn-light {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid rgba(0, 0, 0, 0.18);
+    }
+
+    [data-theme="dark"] .btn-light {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-light:hover {
+      border-color: var(--red);
+      background: rgba(255, 17, 0, 0.05);
+    }
+
+    /* ── Welcome Banner ── */
+    .welcome {
+      padding: 80px 0;
+      margin-bottom: 60px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .welcome-greeting {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--red);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .welcome-name {
+      font-family: var(--font-sans);
+      font-size: 84px;
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -4px;
+      text-transform: uppercase;
+      background: linear-gradient(to bottom, var(--text) 0%, var(--text-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 24px;
+    }
+
+    /* ── Scroll-reveal base ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      filter: blur(12px);
+      transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1), filter 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0)
+    }
+
+    .reveal-left {
+      opacity: 0;
+      transform: translateX(-30px);
+      filter: blur(12px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal-left.visible {
+      opacity: 1;
+      transform: translateX(0);
+      filter: blur(0)
+    }
+
+    .reveal-scale {
+      opacity: 0;
+      transform: scale(0.92);
+      filter: blur(12px);
+      transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s var(--ease-spring), filter 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal-scale.visible {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0)
+    }
+
+    /* stagger children */
+    .stagger-children>* {
+      opacity: 0;
+      transform: translateY(24px);
+      filter: blur(8px);
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), filter 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .stagger-children.visible>* {
+      opacity: 1;
+      transform: none;
+      filter: blur(0)
+    }
+
+    .stagger-children.visible>*:nth-child(1) {
+      transition-delay: 0s
+    }
+
+    .stagger-children.visible>*:nth-child(2) {
+      transition-delay: 0.08s
+    }
+
+    .stagger-children.visible>*:nth-child(3) {
+      transition-delay: 0.16s
+    }
+
+    .stagger-children.visible>*:nth-child(4) {
+      transition-delay: 0.24s
+    }
+
+    .stagger-children.visible>*:nth-child(5) {
+      transition-delay: 0.32s
+    }
+
+    .stagger-children.visible>*:nth-child(6) {
+      transition-delay: 0.40s
+    }
+
+    .stagger-children.visible>*:nth-child(7) {
+      transition-delay: 0.48s
+    }
+
+    .stagger-children.visible>*:nth-child(8) {
+      transition-delay: 0.56s
+    }
+
+    /* ── Cards & Grid ── */
+    .grid {
+      display: grid;
+      gap: 24px;
+    }
+
+    .row-3 { grid-template-columns: repeat(3, 1fr); }
+    .row-main { grid-template-columns: 2fr 1fr 1fr; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 32px;
+      position: relative;
+      transition: all 0.4s var(--ease-out);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card:hover {
+      border-color: rgba(255, 17, 0, 0.25);
+      transform: translateY(-6px);
+      box-shadow: var(--shadow);
+    }
+
+    .card-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-3);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--red);
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    .refresh {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      font-size: 14px;
+      transition: color 0.3s;
+    }
+
+    .refresh:hover {
+      color: var(--red);
+    }
+
+    /* ── Widget Components ── */
+    .w-temp {
+      font-family: var(--font-sans);
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 8px;
+    }
+
+    .w-desc {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .w-pill {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 4px 10px;
+      margin-right: 6px;
+    }
+
+    .stock-row, .task-row, .note-row, .event-row {
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      transition: all 0.3s;
+    }
+
+    .stock-row:hover, .task-row:hover, .note-row:hover, .event-row:hover {
+      padding-left: 8px;
+      color: var(--red);
+    }
+
+    .stock-name, .task-txt, .note-text, .event-title {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .stock-price {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .no-data {
+      font-size: 12px;
+      color: var(--text-3);
+      font-style: italic
+    }
+
+    /* ── Time card ── */
+    .time-big {
+      font-family: var(--font-display);
+      font-size: 68px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -3px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, var(--text), var(--text-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text
+    }
+
+    .date-str {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 6px
+    }
+
+    .greet-str {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 15px;
+      color: var(--text-3)
+    }
+
+    .time-colon {
+      animation: blink 1s step-start infinite
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.15
+      }
+    }
+
+    /* ── Weather ── */
+    .w-temp {
+      font-family: var(--font-display);
+      font-size: 58px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, var(--text), var(--text-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text
+    }
+
+    .w-desc {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 12px
+    }
+
+    .w-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap
+    }
+
+    .w-pill {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-2);
+      background: rgba(0, 0, 0, 0.04);
+      padding: 5px 10px;
+      border-radius: 22px;
+      border: 0.5px solid rgba(0, 0, 0, 0.07);
+      transition: all 0.2s
+    }
+
+    .w-pill:hover {
+      background: rgba(0, 0, 0, 0.09);
+      transform: translateY(-1px)
+    }
+
+    /* ── Stocks ── */
+    .stock-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    .stock-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 13px;
+      border-radius: var(--r-sm);
+      background: rgba(0, 0, 0, 0.02);
+      border: 0.5px solid var(--border);
+      transition: all 0.25s var(--ease-out)
+    }
+
+    .stock-row:hover {
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05)
+    }
+
+    .stock-name {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-2)
+    }
+
+    .stock-price {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: right
+    }
+
+    .stock-chg {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-top: 1px
+    }
+
+    .up {
+      color: var(--green);
+      background: rgba(52, 199, 89, 0.1)
+    }
+
+    .down {
+      color: var(--red);
+      background: rgba(255, 59, 48, 0.1)
+    }
+
+    /* ── Tasks ── */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 12px;
+      max-height: 200px;
+      overflow-y: auto
+    }
+
+    .task-list::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .task-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px
+    }
+
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border-radius: var(--r-sm);
+      background: rgba(0, 0, 0, 0.02);
+      border: 0.5px solid var(--border);
+      cursor: pointer;
+      transition: all 0.22s var(--ease-out)
+    }
+
+    .task-row:hover {
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateX(4px)
+    }
+
+    .task-row.done {
+      opacity: 0.55
+    }
+
+    .task-row.done .task-txt {
+      text-decoration: line-through;
+      color: var(--text-3)
+    }
+
+    .task-chk {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(0, 0, 0, 0.14);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      transition: all 0.3s var(--ease-spring)
+    }
+
+    .task-row.done .task-chk {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(52, 199, 89, 0.4)
+    }
+
+    .task-txt {
+      font-size: 13px;
+      color: var(--text);
+      flex: 1;
+      line-height: 1.35
+    }
+
+    .add-row {
+      display: flex;
+      gap: 7px
+    }
+
+    .add-input {
+      flex: 1;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: var(--r-sm);
+      padding: 10px 16px;
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--text);
+      transition: all 0.25s var(--ease-out)
+    }
+
+    [data-theme="dark"] .add-input {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .add-input::placeholder {
+      color: var(--text-3);
+    }
+
+    .add-input:focus {
+      border-color: var(--red);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(255, 17, 0, 0.1);
+    }
+
+    [data-theme="dark"] .add-input:focus {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .add-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--r-sm);
+      border: none;
+      background: var(--text);
+      color: #fff;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.3s var(--ease-spring)
+    }
+
+    .add-btn:hover {
+      transform: scale(1.12) rotate(8deg);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22)
+    }
+
+    .add-btn:active {
+      transform: scale(0.92)
+    }
+
+    /* ── Calendar ── */
+    .event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto
+    }
+
+    .event-list::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .event-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 113, 227, 0.2);
+      border-radius: 4px
+    }
+
+    .event-row {
+      padding: 10px 14px;
+      border-radius: var(--r-sm);
+      background: rgba(0, 113, 227, 0.04);
+      border-left: 2.5px solid var(--blue);
+      transition: all 0.22s var(--ease-out)
+    }
+
+    .event-row:hover {
+      background: rgba(0, 113, 227, 0.09);
+      transform: translateX(4px)
+    }
+
+    .event-time {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--blue);
+      margin-bottom: 2px;
+      font-weight: 500
+    }
+
+    .event-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.35
+    }
+
+    /* ── News ── */
+    .news-list {
+      display: flex;
+      flex-direction: column;
+      max-height: 220px;
+      overflow-y: auto
+    }
+
+    .news-list::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .news-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px
+    }
+
+    .news-row {
+      padding: 11px 0;
+      border-bottom: 0.5px solid var(--border);
+      cursor: pointer;
+      transition: all 0.22s var(--ease-out);
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+
+    .news-row:last-child {
+      border-bottom: none
+    }
+
+    .news-row:hover {
+      padding-left: 8px
+    }
+
+    .news-row:hover .news-title {
+      color: var(--red);
+    }
+
+    .news-row:hover .news-src::after {
+      content: ' ↗';
+      opacity: 0.6;
+    }
+
+    .news-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      transition: color 0.2s;
+      line-height: 1.44;
+      margin-bottom: 3px
+    }
+
+    .news-src {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-3)
+    }
+
+    /* ── Memory & Habits ── */
+    .mem-item {
+      padding: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .mem-key {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--red);
+      font-family: var(--font-mono);
+      margin-bottom: 4px;
+    }
+
+    .mem-val {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .habit-row {
+      margin-bottom: 16px;
+    }
+
+    .habit-track {
+      height: 2px;
+      background: rgba(255, 255, 255, 0.05);
+      margin-top: 8px;
+    }
+
+    .habit-fill {
+      height: 100%;
+      background: var(--red);
+    }
+
+    /* ── Pomodoro ── */
+    .pomo-ring circle {
+      stroke-width: 4;
+    }
+
+    .pomo-track { stroke: rgba(255, 255, 255, 0.05); }
+    .pomo-fill { stroke: var(--red); }
+
+    .pomo-time-txt {
+      font-family: var(--font-sans);
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .pomo-btn {
+      padding: 8px 16px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-2);
+      cursor: pointer;
+    }
+
+    .pomo-btn.primary {
+      background: var(--red);
+      color: #000;
+      border-color: var(--red);
+      font-weight: 800;
+    }
+
+    /* ── Now Playing ── */
+    .np-art {
+      width: 60px;
+      height: 60px;
+      background: #111;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--r-sm);
+    }
+
+    .np-bar { background: var(--red); }
+    .np-ctrl {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      border-radius: var(--r-sm);
+    }
+
+    .np-ctrl:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ── Notes card ── */
+    .notes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-bottom: 10px
+    }
+
+    .notes-list::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .notes-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px
+    }
+
+    .note-row {
+      padding: 9px 12px;
+      border-radius: var(--r-sm);
+      background: rgba(0, 0, 0, 0.02);
+      border: 0.5px solid var(--border);
+      transition: all 0.22s var(--ease-out)
+    }
+
+    .note-row:hover {
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateX(3px)
+    }
+
+    .note-time {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-3);
+      margin-bottom: 3px
+    }
+
+    .note-text {
+      font-size: 12.5px;
+      color: var(--text);
+      line-height: 1.45
+    }
+
+    /* ── Contacts card ── */
+    .contact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 190px;
+      overflow-y: auto;
+      margin-bottom: 12px
+    }
+
+    .contact-list::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .contact-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px
+    }
+
+    .contact-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--r-sm);
+      background: rgba(0, 0, 0, 0.02);
+      border: 0.5px solid var(--border);
+      transition: all 0.22s var(--ease-out)
+    }
+
+    .contact-row:hover {
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateX(3px)
+    }
+
+    .contact-row:hover .task-del {
+      opacity: 1
+    }
+
+    .contact-main {
+      min-width: 0;
+      flex: 1
+    }
+
+    .contact-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px
+    }
+
+    .contact-meta {
+      font-size: 11px;
+      color: var(--text-2);
+      line-height: 1.45;
+      word-break: break-word
+    }
+
+    .contact-side {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto
+    }
+
+    .contact-chip {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(0, 113, 227, 0.08);
+      color: var(--blue);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      white-space: nowrap
+    }
+
+    .contact-form-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 7px;
+      margin-bottom: 8px
+    }
+
+    .contact-form-grid .add-input:last-child {
+      grid-column: 1 / -1
+    }
+
+    .contact-hint {
+      margin-top: 10px;
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--text-3);
+      font-family: var(--font-mono)
+    }
+
+    /* ── Pomodoro ── */
+    .pomo-ring-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 12px
+    }
+
+    .pomo-ring {
+      position: relative;
+      width: 110px;
+      height: 110px
+    }
+
+    .pomo-ring svg {
+      transform: rotate(-90deg)
+    }
+
+    .pomo-ring circle {
+      fill: none;
+      stroke-width: 6;
+      stroke-linecap: round
+    }
+
+    .pomo-track {
+      stroke: rgba(0, 0, 0, 0.07)
+    }
+
+    .pomo-fill {
+      stroke: var(--red);
+      stroke-dasharray: 295.3;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear
+    }
+
+    .pomo-ring.work .pomo-fill {
+      stroke: var(--red)
+    }
+
+    .pomo-ring.break .pomo-fill {
+      stroke: var(--green)
+    }
+
+    .pomo-ring.longbreak .pomo-fill {
+      stroke: var(--blue)
+    }
+
+    .pomo-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center
+    }
+
+    .pomo-time-txt {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: -1px;
+      line-height: 1
+    }
+
+    .pomo-phase-txt {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 2px
+    }
+
+    .pomo-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: center
+    }
+
+    .pomo-btn {
+      padding: 7px 18px;
+      border-radius: 20px;
+      border: 0.5px solid rgba(0, 0, 0, 0.1);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s var(--ease-spring);
+      background: rgba(0, 0, 0, 0.03);
+      color: var(--text)
+    }
+
+    .pomo-btn:hover {
+      background: var(--text);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      transform: translateY(-1px)
+    }
+
+    .pomo-btn.primary {
+      background: var(--text);
+      color: #fff
+    }
+
+    .pomo-btn.primary:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25)
+    }
+
+    .pomo-sessions {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-3)
+    }
+
+    .pomo-dot-row {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-top: 4px
+    }
+
+    .pomo-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.1);
+      transition: all 0.3s
+    }
+
+    .pomo-dot.done {
+      background: var(--red);
+      box-shadow: 0 0 6px rgba(255, 59, 48, 0.4)
+    }
+
+    /* ── Toast ── */
+    #alfredToast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: hsl(240, 18%, 12%);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-family: var(--font-sans);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s var(--ease-spring);
+      z-index: 9000;
+      white-space: nowrap
+    }
+
+    #alfredToast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    /* ── Quick Actions / Magnetic Buttons ── */
+    .qa-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px
+    }
+
+    .qa-btn {
+      padding: 9px 17px;
+      border-radius: 22px;
+      border: 0.5px solid rgba(0, 0, 0, 0.1);
+      background: rgba(0, 0, 0, 0.025);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-weight: 500;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.22s, border-color 0.22s, box-shadow 0.22s;
+      /* magnetic transform handled by JS */
+    }
+
+    .qa-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--text);
+      transform: scale(0);
+      border-radius: inherit;
+      transition: transform 0.35s var(--ease-spring), opacity 0.22s;
+      opacity: 0
+    }
+
+    .qa-btn:hover::before {
+      transform: scale(1);
+      opacity: 1
+    }
+
+    .qa-btn:hover {
+      color: #fff;
+      border-color: var(--text);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18)
+    }
+
+    .qa-btn span {
+      position: relative;
+      z-index: 1
+    }
+
+    .qa-btn:active {
+      transform: scale(0.95) !important
+    }
+
+    /* ── Skeleton ── */
+    @keyframes skel {
+      0% {
+        background-position: 200% 0
+      }
+
+      100% {
+        background-position: -200% 0
+      }
+    }
+
+    .skeleton {
+      border-radius: 6px;
+      height: 14px;
+      background: linear-gradient(90deg, rgba(100, 90, 200, 0.05) 25%, rgba(100, 90, 200, 0.13) 50%, rgba(100, 90, 200, 0.05) 75%);
+      background-size: 400% 100%;
+      animation: skel 2s ease-in-out infinite;
+    }
+
+    .skel-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.015);
+      border: 0.5px solid var(--border);
+      margin-bottom: 5px
+    }
+
+    .skel-circle {
+      border-radius: 50%;
+      flex-shrink: 0;
+      height: 18px;
+      width: 18px
+    }
+
+    .skel-block {
+      border-radius: 8px
+    }
+
+    /* Content fade-in after skeleton */
+    @keyframes contentIn {
+      from {
+        opacity: 0;
+        transform: translateY(7px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .content-loaded {
+      animation: contentIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards
+    }
+
+    /* ── Page transition overlay ── */
+    #pageOverlay {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      z-index: 9999;
+      pointer-events: none;
+      animation: overlayOut 0.7s var(--ease-out) 0.05s forwards
+    }
+
+    @keyframes overlayOut {
+      to {
+        opacity: 0;
+        transform: translateY(-100%)
+      }
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 8px
+    }
+
+    /* ── Settings drawer ── */
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 8, 30, 0.35);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .settings-overlay.open {
+      opacity: 1;
+      pointer-events: all
+    }
+
+    .settings-drawer {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%) translateY(110%);
+      width: min(520px, 94vw);
+      max-height: 85vh;
+      overflow-y: auto;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      padding: 28px 28px 36px;
+      box-shadow: 0 -8px 48px hsla(248, 60%, 20%, 0.18);
+      z-index: 501;
+      border: 0.5px solid var(--border);
+      transition: transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1);
+      color: #111111;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,0,0,0.1) transparent;
+    }
+
+    [data-theme="dark"] .settings-drawer {
+      background: hsl(240, 8%, 10%);
+      color: var(--text);
+      box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.6);
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+
+    .settings-overlay.open .settings-drawer {
+      transform: translateX(-50%) translateY(0)
+    }
+
+    .settings-handle {
+      width: 36px;
+      height: 4px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      margin: 0 auto 22px;
+    }
+
+    .settings-title {
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px
+    }
+
+    .settings-sub {
+      font-size: 12px;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      margin-bottom: 22px;
+      letter-spacing: 0.2px
+    }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(0, 0, 0, 0.1);
+      background: rgba(0, 0, 0, 0.02);
+      margin-bottom: 16px;
+    }
+
+    [data-theme="dark"] .toggle-row {
+      border-color: rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .toggle-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text)
+    }
+
+    /* ── Login Overlay ── */
+    .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+    .login-overlay.open { opacity: 1; pointer-events: auto; }
+    .login-modal { background: #0a0a0a; padding: 40px; border-radius: var(--r); box-shadow: 0 60px 120px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08); width: 360px; transform: scale(0.95) translateY(20px); transition: all 0.6s cubic-bezier(0.16,1,0.3,1); }
+    .login-overlay.open .login-modal { transform: scale(1) translateY(0); }
+    .login-title { font-size: 24px; font-weight: 700; color: var(--text); font-family: var(--font-display); margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: var(--text-3); font-family: var(--font-sans); margin-bottom: 24px; }
+    .onboarding-modal { width: min(560px, calc(100vw - 28px)); }
+    .onboarding-grid { display: grid; gap: 14px; }
+    .onboarding-card { padding: 16px; border-radius: 18px; border: 0.5px solid var(--border); background: rgba(0,0,0,0.02); }
+    .onboarding-card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .onboarding-card-sub { font-size: 12px; color: var(--text-2); line-height: 1.55; margin-bottom: 12px; }
+    .auth-setup-box { display: grid; gap: 8px; margin-top: 14px; padding: 14px; border-radius: 16px; border: 0.5px solid var(--border); background: rgba(0,0,0,0.02); }
+    .auth-setup-label { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); letter-spacing: 0.4px; text-transform: uppercase; }
+    .auth-inline-check { display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer;line-height:1.5 }
+    .auth-inline-check input { margin-top: 2px; accent-color: var(--indigo); }
+    .qr-help { font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:8px;line-height:1.5 }
+    
+    @keyframes shake {
+      0%, 100% { transform: scale(1) translateY(0); }
+      15%, 45%, 75% { transform: scale(1) translateY(0) translateX(-6px); }
+      30%, 60% { transform: scale(1) translateY(0) translateX(6px); }
+    }
+    .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+    .input-group input { width: 100%; box-sizing: border-box; }
+
+    .toggle-desc {
+      font-size: 11px;
+      color: var(--text-3);
+      font-family: var(--font-mono)
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 13px;
+      background: rgba(0, 0, 0, 0.1);
+      transition: background 0.25s var(--ease-out);
+    }
+
+    .toggle-switch input:checked+.toggle-track {
+      background: var(--indigo)
+    }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      transition: transform 0.25s var(--ease-spring);
+    }
+
+    .toggle-switch input:checked~.toggle-thumb {
+      transform: translateX(20px)
+    }
+
+    /* Gear button */
+    #settingsBtn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 0.5px solid rgba(0, 0, 0, 0.1);
+      background: var(--surface);
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: all 0.3s var(--ease-spring);
+    }
+
+    #settingsBtn:hover {
+      background: var(--text);
+      color: #fff;
+      border-color: var(--text);
+      transform: rotate(60deg) scale(1.05)
+    }
+
+    /* Status chip in nav */
+    .shortcut-chip {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 0.5px solid var(--border);
+      background: rgba(0, 0, 0, 0.03);
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+
+    [data-theme="dark"] .top {
+      border-color: rgba(255, 255, 255, 0.08);
+      background: rgba(18, 18, 26, 0.62);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .shortcut-chip.active {
+      color: var(--indigo);
+      border-color: hsla(248, 82%, 62%, 0.3);
+      background: hsla(248, 82%, 62%, 0.06)
+    }
+
+    .shortcut-chip-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: dotPulse 2s ease-in-out infinite
+    }
+
+    .shortcut-chip.listening {
+      border-color: var(--indigo);
+      background: hsla(248, 82%, 62%, 0.12);
+      box-shadow: 0 0 15px hsla(248, 82%, 62%, 0.2);
+    }
+
+    .shortcut-chip.listening .shortcut-chip-dot {
+      background: #00ff88;
+      animation: listeningPulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    @keyframes listeningPulse {
+      0%, 100% { transform: scale(1); filter: blur(0px); opacity: 1; }
+      50% { transform: scale(1.6); filter: blur(1px); opacity: 0.6; }
+    }
+
+    .floaty {
+      animation: floaty 8s ease-in-out infinite;
+    }
+
+    .floaty-slow {
+      animation: floaty 12s ease-in-out 1s infinite;
+    }
+
+    @keyframes floaty {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body::before,
+      .gravity-blob,
+      .floaty,
+      .floaty-slow {
+        animation: none !important;
+      }
+
+      .wrap,
+      .welcome-content,
+      .welcome-time,
+      .card,
+      .welcome {
+        transition: none !important;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .top {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+      }
+
+      .top-right {
+        justify-content: flex-start;
+      }
+    }
+
+    /* ── Light mode refinements ── */
+    :root {
+      --border: rgba(0, 0, 0, 0.09);
+    }
+
+    /* Row separators and list items in light mode */
+    .stock-row:hover,
+    .task-row:hover,
+    .note-row:hover,
+    .event-row:hover {
+      color: var(--text);
+    }
+
+    /* Pomodoro ring track – light mode */
+    .pomo-track {
+      stroke: rgba(0, 0, 0, 0.09);
+    }
+
+    [data-theme="dark"] .pomo-track {
+      stroke: rgba(255, 255, 255, 0.07);
+    }
+
+    /* Habit tracker bar – light mode */
+    .habit-track {
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] .habit-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Now Playing art box */
+    .np-art {
+      background: rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--border);
+    }
+
+    [data-theme="dark"] .np-art {
+      background: #111;
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Now Playing controls */
+    .np-ctrl {
+      background: transparent;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      color: var(--text);
+    }
+
+    [data-theme="dark"] .np-ctrl {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .np-ctrl:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Pomo buttons – make work in both themes */
+    .pomo-btn {
+      border: 0.5px solid rgba(0, 0, 0, 0.12);
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    [data-theme="dark"] .pomo-btn {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Scrollbar in light mode */
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    [data-theme="dark"] ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Shortcut chip */
+    .shortcut-chip {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] .shortcut-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.07);
+    }
+
+    /* Refresh buttons visible in both themes */
+    .refresh {
+      color: var(--text-2);
+    }
+
+    /* w-pill in light mode */
+    .w-pill {
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] .w-pill {
+      border-color: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Details/summary expand in settings (advanced mail) */
+    details {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: rgba(0, 0, 0, 0.1) !important;
+    }
+
+    [data-theme="dark"] details {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    /* Login modal stays dark (it's a design choice) but handle light mode too */
+    .login-modal {
+      background: #0a0a0a;
+      color: #ffffff;
+    }
+
+    .login-modal .add-input {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+    }
+
+    .login-modal .add-input::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .login-modal .add-input:focus {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .login-modal .btn-dark {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    .login-modal .btn-dark:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .login-modal .btn-light {
+      border-color: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    /* Auth setup box inside login modal */
+    .auth-setup-box {
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      background: rgba(255, 255, 255, 0.03) !important;
+    }
+
+    .login-modal details {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="spline-bg">
+    <spline-viewer url="https://prod.spline.design/kZ6uCthOcaCHhtw3/scene.splinecode"></spline-viewer>
+  </div>
+
+  <!-- Page-enter wipe overlay -->
+  <div id="pageOverlay"></div>
+
+  <div class="wrap">
+
+    <!-- ── Navbar ── -->
+    <div class="top">
+      <div class="brand">
+        <div class="brand-mark" title="Alfred"><span>A</span></div>
+        <div class="brand-info">
+          <div class="name">Alfred</div>
+          <div class="sub">Command Center</div>
+        </div>
+      </div>
+      <div class="top-right">
+        <div class="shortcut-chip" id="shortcutChip">
+          <span class="shortcut-chip-dot"></span>
+          <span id="shortcutChipLabel">Shortcuts off</span>
+        </div>
+        <button id="themeBtn" class="magnetic" onclick="toggleTheme()" title="Toggle dark / light mode">☀️</button>
+        <button id="settingsBtn" class="magnetic" onclick="openSettings()" title="Wake Shortcut Settings">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M7.5 9.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" stroke-width="1.3" />
+            <path
+              d="M12.2 9.1c.1-.2.1-.4.1-.6s0-.4-.1-.6l1.3-1-1.2-2.1-1.6.5c-.3-.3-.7-.5-1.1-.7L9.3 3H6.7l-.3 1.6c-.4.2-.8.4-1.1.7l-1.6-.5L2.5 6.9l1.3 1c-.1.2-.1.4-.1.6s0 .4.1.6l-1.3 1 1.2 2.1 1.6-.5c.3.3.7.5 1.1.7l.3 1.6h2.6l.3-1.6c.4-.2.8-.4 1.1-.7l1.6.5 1.2-2.1-1.3-1Z"
+              stroke="currentColor" stroke-width="1.3" />
+          </svg>
+        </button>
+        <button class="btn btn-light magnetic" onclick="refreshAll()" id="refreshBtn">↻ Refresh</button>
+        <a href="/chat-ui" class="btn btn-dark magnetic">Chat with Alfred →</a>
+      </div>
+    </div>
+
+    <!-- ── Welcome Banner ── -->
+    <div class="welcome floaty" id="welcomeBanner">
+      <div class="welcome-shine"></div>
+      <div class="welcome-glow-1"></div>
+      <div class="welcome-glow-2"></div>
+      <div class="welcome-glow-3"></div>
+      <div class="welcome-content">
+        <div class="welcome-greeting" id="welcomeGreeting">Good morning</div>
+        <div class="welcome-name" id="welcomeName">SAICHARAN.</div>
+        <div class="welcome-sub" id="welcomeSub">Here's what's happening today.</div>
+      </div>
+      <div class="welcome-time" id="welcomeTime">--:--</div>
+    </div>
+
+    <div class="section-gap"></div>
+
+    <!-- ── Row 1 ── -->
+    <div class="grid row-main stagger-children reveal" style="margin-bottom:12px">
+
+      <div class="card">
+        <div class="card-tag"><span><span class="dot"></span>Local Time</span></div>
+        <div class="time-big" id="time">--:--</div>
+        <div class="date-str" id="date">Loading…</div>
+        <div class="greet-str" id="greet">Good day.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--orange)"></span>Weather · Bengaluru</span>
+          <button class="refresh" onclick="loadWeather()">↻</button>
+        </div>
+        <div id="weatherSkel">
+          <div class="skeleton skel-block" style="width:110px;height:62px;margin-bottom:9px"></div>
+          <div class="skeleton" style="width:155px;margin-bottom:13px"></div>
+          <div style="display:flex;gap:6px">
+            <div class="skeleton skel-block" style="width:82px;height:26px;border-radius:22px"></div>
+            <div class="skeleton skel-block" style="width:60px;height:26px;border-radius:22px"></div>
+          </div>
+        </div>
+        <div id="weatherContent" style="display:none">
+          <div class="w-temp" id="temp">--°</div>
+          <div class="w-desc" id="desc"></div>
+          <div class="w-pills">
+            <span class="w-pill" id="feels"></span>
+            <span class="w-pill" id="humidity"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--green)"></span>Markets</span>
+          <button class="refresh" onclick="loadStocks()">↻</button>
+        </div>
+        <div class="stock-list" id="stockList">
+          <div class="skeleton" style="margin-bottom:6px"></div>
+          <div class="skeleton" style="width:80%;margin-bottom:6px"></div>
+          <div class="skeleton" style="width:65%"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 2 ── -->
+    <div class="grid row-3 stagger-children reveal" style="margin-bottom:12px">
+
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--blue)"></span>Tasks</span>
+          <button class="refresh" onclick="loadTasks()">↻</button>
+        </div>
+        <div class="task-list" id="taskList">
+          <div class="skel-row">
+            <div class="skeleton skel-circle"></div>
+            <div class="skeleton" style="flex:1"></div>
+          </div>
+          <div class="skel-row">
+            <div class="skeleton skel-circle"></div>
+            <div class="skeleton" style="flex:1;width:75%"></div>
+          </div>
+          <div class="skel-row" style="margin-bottom:0">
+            <div class="skeleton skel-circle"></div>
+            <div class="skeleton" style="flex:1;width:55%"></div>
+          </div>
+        </div>
+        <div class="add-row">
+          <input class="add-input" id="taskInput" placeholder="Add a task…"
+            onkeydown="if(event.key==='Enter')addTask()" />
+          <button class="add-btn" onclick="addTask()">+</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--blue)"></span>Calendar</span>
+          <button class="refresh" onclick="loadCalendar()">↻</button>
+        </div>
+        <div class="event-list" id="eventList">
+          <div
+            style="padding:10px 14px;border-radius:12px;background:rgba(0,113,227,0.03);border-left:2.5px solid rgba(0,113,227,0.18);margin-bottom:6px">
+            <div class="skeleton" style="width:58px;height:10px;margin-bottom:6px"></div>
+            <div class="skeleton" style="width:140px"></div>
+          </div>
+          <div
+            style="padding:10px 14px;border-radius:12px;background:rgba(0,113,227,0.03);border-left:2.5px solid rgba(0,113,227,0.18);margin-bottom:6px">
+            <div class="skeleton" style="width:48px;height:10px;margin-bottom:6px"></div>
+            <div class="skeleton" style="width:110px"></div>
+          </div>
+          <div
+            style="padding:10px 14px;border-radius:12px;background:rgba(0,113,227,0.03);border-left:2.5px solid rgba(0,113,227,0.18)">
+            <div class="skeleton" style="width:66px;height:10px;margin-bottom:6px"></div>
+            <div class="skeleton" style="width:125px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--red)"></span>News</span>
+          <button class="refresh" onclick="loadNews()">↻</button>
+        </div>
+        <div class="news-list" id="newsList">
+          <div style="padding:11px 0;border-bottom:0.5px solid var(--border)">
+            <div class="skeleton" style="width:90%;margin-bottom:5px"></div>
+            <div class="skeleton" style="width:60%;height:10px"></div>
+          </div>
+          <div style="padding:11px 0;border-bottom:0.5px solid var(--border)">
+            <div class="skeleton" style="width:80%;margin-bottom:5px"></div>
+            <div class="skeleton" style="width:45%;height:10px"></div>
+          </div>
+          <div style="padding:11px 0;border-bottom:0.5px solid var(--border)">
+            <div class="skeleton" style="width:85%;margin-bottom:5px"></div>
+            <div class="skeleton" style="width:55%;height:10px"></div>
+          </div>
+          <div style="padding:11px 0">
+            <div class="skeleton" style="width:75%;margin-bottom:5px"></div>
+            <div class="skeleton" style="width:40%;height:10px"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 3: Now Playing + Notes + Pomodoro ── -->
+    <div class="grid row-3 stagger-children reveal" style="margin-bottom:12px">
+
+      <!-- Now Playing -->
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--green)"></span>Now Playing</span>
+          <button class="refresh" onclick="loadNowPlaying()" title="Refresh">↻</button>
+        </div>
+        <div id="nowPlayingCard">
+          <div class="np-idle">
+            <div class="np-idle-icon">🎵</div>
+            <p>Nothing playing</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Notes -->
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--violet)"></span>Quick Notes</span>
+          <button class="refresh" onclick="loadNotes()" title="Refresh">↻</button>
+        </div>
+        <div class="notes-list" id="notesList">
+          <div class="skeleton" style="margin-bottom:5px"></div>
+          <div class="skeleton" style="width:80%;margin-bottom:5px"></div>
+          <div class="skeleton" style="width:65%"></div>
+        </div>
+        <div class="add-row">
+          <input class="add-input" id="noteInput" placeholder="Jot something down…"
+            onkeydown="if(event.key==='Enter')addNote()" />
+          <button class="add-btn" onclick="addNote()" title="Save note">+</button>
+        </div>
+      </div>
+
+      <!-- Pomodoro -->
+      <div class="card">
+        <div class="card-tag"><span><span class="dot" style="background:var(--red)"></span>Focus Timer</span></div>
+        <div class="pomo-ring-wrap">
+          <div class="pomo-ring work" id="pomoRing">
+            <svg width="110" height="110" viewBox="0 0 110 110">
+              <circle class="pomo-track" cx="55" cy="55" r="47" />
+              <circle class="pomo-fill" id="pomoCircle" cx="55" cy="55" r="47" />
+            </svg>
+            <div class="pomo-label">
+              <div class="pomo-time-txt" id="pomoTime">25:00</div>
+              <div class="pomo-phase-txt" id="pomoPhase">Focus</div>
+            </div>
+          </div>
+        </div>
+        <div class="pomo-actions">
+          <button class="pomo-btn" onclick="pomoReset()">↺ Reset</button>
+          <button class="pomo-btn primary" onclick="pomoToggle()" id="pomoStartBtn">▶ Start</button>
+        </div>
+        <div class="pomo-sessions">
+          <div id="pomoSessionsLabel">Session 1 of 4</div>
+          <div class="pomo-dot-row" id="pomoDots"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 4: Contacts + Memory + Habits ── -->
+    <div class="grid row-3 stagger-children reveal" style="margin-bottom:12px">
+
+      <div class="card">
+        <div class="card-tag">
+          <span><span class="dot" style="background:var(--green)"></span>Contacts</span>
+          <button class="refresh" onclick="loadContacts()" title="Refresh">↻</button>
+        </div>
+        <div class="contact-list" id="contactsList">
+          <div class="note-row">
+            <div class="skeleton" style="width:90px;height:10px;margin-bottom:6px"></div>
+            <div class="skeleton" style="width:140px;height:11px"></div>
+          </div>
+          <div class="note-row">
+            <div class="skeleton" style="width:72px;height:10px;margin-bottom:6px"></div>
+            <div class="skeleton" style="width:120px;height:11px"></div>
+          </div>
+        </div>
+        <div class="contact-form-grid">
+          <input class="add-input" id="contactNameInput" placeholder="Name"
+            onkeydown="if(event.key==='Enter')addContact()" />
+          <input class="add-input" id="contactPhoneInput" placeholder="Phone / WhatsApp number"
+            onkeydown="if(event.key==='Enter')addContact()" />
+          <input class="add-input" id="contactEmailInput" placeholder="Email (optional)"
+            onkeydown="if(event.key==='Enter')addContact()" />
+        </div>
+        <div class="add-row">
+          <button class="btn btn-dark" style="flex:1;justify-content:center" onclick="addContact()">Add Contact</button>
+          <button class="btn btn-light" style="flex:1;justify-content:center" onclick="importWhatsAppContacts()">Import WhatsApp Contacts</button>
+        </div>
+        <div class="contact-hint">Add people directly from this laptop, or pull in contacts from your paired WhatsApp session.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag"><span><span class="dot" style="background:var(--text-3)"></span>What Alfred Knows</span>
+        </div>
+        <div class="mem-grid" id="memGrid">
+          <div
+            style="background:rgba(0,0,0,0.02);border-radius:12px;padding:10px 12px;border:0.5px solid var(--border)">
+            <div class="skeleton" style="width:60px;height:9px;margin-bottom:7px"></div>
+            <div class="skeleton" style="width:80px;height:13px"></div>
+          </div>
+          <div
+            style="background:rgba(0,0,0,0.02);border-radius:12px;padding:10px 12px;border:0.5px solid var(--border)">
+            <div class="skeleton" style="width:50px;height:9px;margin-bottom:7px"></div>
+            <div class="skeleton" style="width:70px;height:13px"></div>
+          </div>
+          <div
+            style="background:rgba(0,0,0,0.02);border-radius:12px;padding:10px 12px;border:0.5px solid var(--border)">
+            <div class="skeleton" style="width:68px;height:9px;margin-bottom:7px"></div>
+            <div class="skeleton" style="width:90px;height:13px"></div>
+          </div>
+          <div
+            style="background:rgba(0,0,0,0.02);border-radius:12px;padding:10px 12px;border:0.5px solid var(--border)">
+            <div class="skeleton" style="width:54px;height:9px;margin-bottom:7px"></div>
+            <div class="skeleton" style="width:74px;height:13px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag"><span><span class="dot" style="background:var(--orange)"></span>Usage Habits</span></div>
+        <div class="habit-list" id="habitList">
+          <div class="habit-row">
+            <div class="skeleton" style="width:60px;height:11px;border-radius:4px"></div>
+            <div style="flex:1;height:5px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
+              <div class="skeleton" style="height:100%;border-radius:3px;width:70%"></div>
+            </div>
+            <div class="skeleton" style="width:18px;height:10px;border-radius:4px"></div>
+          </div>
+          <div class="habit-row">
+            <div class="skeleton" style="width:60px;height:11px;border-radius:4px"></div>
+            <div style="flex:1;height:5px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
+              <div class="skeleton" style="height:100%;border-radius:3px;width:45%"></div>
+            </div>
+            <div class="skeleton" style="width:18px;height:10px;border-radius:4px"></div>
+          </div>
+          <div class="habit-row">
+            <div class="skeleton" style="width:60px;height:11px;border-radius:4px"></div>
+            <div style="flex:1;height:5px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
+              <div class="skeleton" style="height:100%;border-radius:3px;width:85%"></div>
+            </div>
+            <div class="skeleton" style="width:18px;height:10px;border-radius:4px"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 5: Quick Actions ── -->
+    <div class="grid row-full stagger-children reveal">
+
+      <div class="card">
+        <div class="card-tag"><span><span class="dot" style="background:var(--green)"></span>Quick Actions</span></div>
+        <div class="qa-grid">
+          <button class="qa-btn magnetic" onclick="go('Wake up Alfred')"><span>🌅 Briefing</span></button>
+          <button class="qa-btn magnetic" onclick="go('Give me the news')"><span>📰 News</span></button>
+          <button class="qa-btn magnetic" onclick="go('What is the weather')"><span>🌤️ Weather</span></button>
+          <button class="qa-btn magnetic" onclick="go('What is the market doing')"><span>📈 Markets</span></button>
+          <button class="qa-btn magnetic" onclick="go('Play music on Spotify')"><span>🎵 Music</span></button>
+          <button class="qa-btn magnetic" onclick="go('What are my pending tasks')"><span>✅ Tasks</span></button>
+          <button class="qa-btn magnetic" onclick="go('What is on my calendar today')"><span>📅 Calendar</span></button>
+          <button class="qa-btn magnetic" onclick="window.location.href='/chat-ui'"><span>💬 Open Chat</span></button>
+          <button class="qa-btn magnetic" onclick="window.location.href='/chat-ui?attach=1'"
+            title="Analyze a file with Alfred"><span>📎 Analyze File</span></button>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /wrap -->
+
+  <!-- ── Settings Drawer ── -->
+  <div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsOutside(event)">
+    <div class="settings-drawer">
+      <div class="settings-handle"></div>
+      <div class="settings-title">Settings</div>
+      <div class="settings-sub">Keep Alfred personalized for this browser and connect your own accounts.</div>
+
+      <div class="toggle-row" id="voiceToggleRow">
+        <div class="toggle-info">
+          <div class="toggle-label">🎙️ &nbsp;"Hey Alfred"</div>
+          <div class="toggle-desc">Continuous voice wake word — works on any page</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="voiceToggle" onchange="selectMode(this.checked ? 'voice' : 'off')" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+      <div class="toggle-row"
+        style="background:hsla(248,82%,62%,0.04);border-color:hsla(248,82%,62%,0.12);margin-bottom:22px">
+        <div class="toggle-info">
+          <div class="toggle-label" style="font-size:12px;font-weight:500;color:var(--text-2)">How it works</div>
+          <div class="toggle-desc" style="line-height:1.7">
+            Say <strong style="color:var(--indigo)">"Hey Alfred"</strong> aloud →
+            Alfred opens and starts listening automatically. Requires mic permission once.
+          </div>
+        </div>
+      </div>
+
+      <div class="toggle-row" style="background:rgba(52,199,89,0.06);border-color:rgba(52,199,89,0.2);padding:14px 16px;margin-bottom:14px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px;margin-top:1px">🔒</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Your data stays private</div>
+            <div style="font-size:11px;color:var(--text-2);font-family:var(--font-mono);line-height:1.7">
+              Email <strong>body content is never sent to the AI</strong> — only sender names and subject lines are used for summaries.
+              WhatsApp message previews are truncated to sender + time only.
+              Your credentials are stored locally on this device.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+        <div class="toggle-info" style="margin-bottom:14px">
+          <div class="toggle-label">Email Integration</div>
+          <div class="toggle-desc">Connect each user's email account so Alfred can send prompt-driven emails from that user's mailbox.</div>
+        </div>
+        <div style="display:grid;gap:10px">
+          <input type="email" id="emailIntegrationAddress" class="add-input" placeholder="you@company.com" autocomplete="email" />
+          <input type="password" id="emailIntegrationPassword" class="add-input" placeholder="Email password or app password" autocomplete="new-password" />
+          <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">For Gmail or Google Workspace, use an App Password. For other providers, add the mail server below if needed.</div>
+          <details style="border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,0.03)">
+            <summary style="cursor:pointer;font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Advanced mail server settings</summary>
+            <div style="display:grid;gap:10px;margin-top:12px">
+              <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                <input type="text" id="emailIntegrationSmtpHost" class="add-input" placeholder="SMTP host" autocomplete="off" />
+                <input type="number" id="emailIntegrationSmtpPort" class="add-input" placeholder="Port" min="1" max="65535" />
+              </div>
+              <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                <input type="text" id="emailIntegrationImapHost" class="add-input" placeholder="IMAP host" autocomplete="off" />
+                <input type="number" id="emailIntegrationImapPort" class="add-input" placeholder="Port" min="1" max="65535" />
+              </div>
+              <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Leave these blank for Gmail or Google Workspace.</div>
+            </div>
+          </details>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="settingsSaveEmailBtn" class="btn btn-dark" style="flex:1;min-width:140px;justify-content:center" onclick="saveEmailIntegration('settings')">Save Email</button>
+            <button id="settingsDisconnectEmailBtn" class="btn btn-light" style="flex:1;min-width:140px;justify-content:center" onclick="disconnectEmailIntegration('settings')">Disconnect</button>
+          </div>
+          <div id="emailIntegrationStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Email not connected.</div>
+        </div>
+      </div>
+
+      <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+        <div class="toggle-info" style="margin-bottom:14px">
+          <div class="toggle-label">WhatsApp Integration</div>
+          <div class="toggle-desc">Each user gets their own WhatsApp Web session. Start pairing, scan the QR code, and Alfred will use that user's account.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button id="settingsStartWhatsAppBtn" class="btn btn-dark" style="flex:1;min-width:120px;justify-content:center" onclick="startWhatsAppIntegration('settings')">Pair WhatsApp</button>
+          <button id="settingsRefreshWhatsAppBtn" class="btn btn-light" style="flex:1;min-width:120px;justify-content:center" onclick="refreshWhatsAppIntegration('settings')">Refresh</button>
+          <button id="settingsDisconnectWhatsAppBtn" class="btn btn-light" style="flex:1;min-width:120px;justify-content:center" onclick="disconnectWhatsAppIntegration('settings')">Disconnect</button>
+        </div>
+        <div id="whatsAppIntegrationStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);margin-bottom:10px">WhatsApp not connected.</div>
+        <div id="whatsAppQrWrap" style="display:none;padding:10px;border-radius:14px;background:rgba(0,0,0,0.03);border:0.5px solid var(--border);text-align:center">
+          <img id="whatsAppQrImage" alt="WhatsApp QR" style="width:220px;max-width:100%;border-radius:12px;background:white;padding:10px" />
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:8px">Open WhatsApp on your phone and scan this QR.</div>
+        </div>
+      </div>
+
+      <!-- ── Cold Email (Premium) ─────────────────────────────── -->
+      <div id="coldEmailSection" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin:20px 0 12px">
+          <span style="font-size:13px;font-weight:600;color:var(--text)">✉️ Cold Email Agent</span>
+          <span style="font-size:10px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:99px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff">PREMIUM</span>
+        </div>
+        <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+          <div class="toggle-info" style="margin-bottom:14px">
+            <div class="toggle-label" style="font-size:12px">Sender Settings</div>
+            <div class="toggle-desc">Configure how Alfred sends your outreach emails.</div>
+          </div>
+          <div style="display:grid;gap:10px">
+            <input type="text" id="ceNameInput" class="add-input" placeholder="Your name (e.g. Surya Maddula)" autocomplete="name" />
+            <input type="text" id="ceRoleInput" class="add-input" placeholder="Your role (e.g. Founder)" autocomplete="organization-title" />
+            <input type="email" id="ceEmailInput" class="add-input" placeholder="Sender Gmail (e.g. you@gmail.com)" autocomplete="email" />
+            <input type="password" id="cePasswordInput" class="add-input" placeholder="Gmail App Password (16-char)" autocomplete="new-password" />
+            <input type="text" id="ceCompanyInput" class="add-input" placeholder="Company name" autocomplete="organization" />
+            <textarea id="ceValuePropInput" class="add-input" rows="3" placeholder="Value proposition — what you do and who you help (used in email copy)" style="resize:vertical;height:auto;padding-top:10px;padding-bottom:10px"></textarea>
+            <button class="btn btn-dark" style="justify-content:center" onclick="saveColdEmailConfig()">Save Config</button>
+            <div id="ceConfigStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)"></div>
+          </div>
+        </div>
+
+        <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+          <div class="toggle-info" style="margin-bottom:14px">
+            <div class="toggle-label" style="font-size:12px">Run Campaign</div>
+            <div class="toggle-desc">Upload a CSV with columns: <code style="font-family:var(--font-mono);font-size:11px">email, name, company, industry, pain_point</code></div>
+          </div>
+          <div style="display:grid;gap:10px">
+            <input type="file" id="ceLeadsFile" accept=".csv" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)" />
+            <button class="btn btn-dark" style="justify-content:center;background:linear-gradient(135deg,rgba(99,102,241,.85),rgba(168,85,247,.85))" onclick="runColdEmailCampaign()">🚀 Launch Campaign</button>
+            <div id="ceCampaignStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)"></div>
+          </div>
+        </div>
+
+        <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="toggle-label" style="font-size:12px">Campaign Stats</div>
+            <button class="btn btn-light" style="padding:4px 10px;font-size:11px" onclick="loadColdEmailStats()">Refresh</button>
+          </div>
+          <div id="ceStatsWrap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+            <div style="padding:10px;border-radius:10px;background:rgba(0,0,0,.03);border:0.5px solid var(--border)">
+              <div id="ceStat-sent" style="font-size:22px;font-weight:700;color:var(--text)">—</div>
+              <div style="font-size:10px;color:var(--text-2);font-family:var(--font-mono);margin-top:2px">Sent</div>
+            </div>
+            <div style="padding:10px;border-radius:10px;background:rgba(0,0,0,.03);border:0.5px solid var(--border)">
+              <div id="ceStat-replied" style="font-size:22px;font-weight:700;color:var(--green)">—</div>
+              <div style="font-size:10px;color:var(--text-2);font-family:var(--font-mono);margin-top:2px">Replied</div>
+            </div>
+            <div style="padding:10px;border-radius:10px;background:rgba(0,0,0,.03);border:0.5px solid var(--border)">
+              <div id="ceStat-rate" style="font-size:22px;font-weight:700;color:var(--indigo)">—</div>
+              <div style="font-size:10px;color:var(--text-2);font-family:var(--font-mono);margin-top:2px">Reply Rate</div>
+            </div>
+            <div style="padding:10px;border-radius:10px;background:rgba(0,0,0,.03);border:0.5px solid var(--border)">
+              <div id="ceStat-failed" style="font-size:22px;font-weight:700;color:var(--red)">—</div>
+              <div style="font-size:10px;color:var(--text-2);font-family:var(--font-mono);margin-top:2px">Failed</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="toggle-label" style="font-size:12px">Sent History</div>
+            <button class="btn btn-light" style="padding:4px 10px;font-size:11px" onclick="loadColdEmailHistory()">Load</button>
+          </div>
+          <div id="ceHistoryList" style="display:grid;gap:6px;max-height:180px;overflow-y:auto"></div>
+        </div>
+
+        <div class="toggle-row" style="display:block;padding:18px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="toggle-label" style="font-size:12px">Replies Received</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-light" style="padding:4px 10px;font-size:11px" onclick="checkColdEmailReplies()">Check Inbox</button>
+              <button class="btn btn-light" style="padding:4px 10px;font-size:11px" onclick="loadColdEmailReplies()">Load</button>
+            </div>
+          </div>
+          <div id="ceRepliesList" style="display:grid;gap:6px;max-height:180px;overflow-y:auto"></div>
+        </div>
+      </div>
+      <!-- ── / Cold Email ─────────────────────────────────────── -->
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-light" style="flex:1"
+          onclick="AlfredShortcuts.test();showSettingsToast('Wake preview ✓')">🔔 Test it</button>
+        <button class="btn btn-dark" style="flex:1" onclick="closeSettings()">Done</button>
+      </div>
+      <button class="btn btn-light" style="width:100%;justify-content:center;margin-top:10px" onclick="logout()">Log Out</button>
+      <div id="settingsToast"
+        style="text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--indigo);margin-top:12px;min-height:16px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Login Overlay ── -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-modal" id="loginModal">
+      
+      <!-- SIGN IN VIEW -->
+      <div id="viewSignIn">
+        <div class="login-title">Welcome back.</div>
+        <div class="login-sub">Enter your credentials to access Alfred.</div>
+        <div class="input-group" style="margin-bottom:12px">
+            <input type="email" id="loginEmail" class="add-input" placeholder="Email" />
+        </div>
+        <div class="input-group" style="margin-bottom:16px">
+            <input type="password" id="loginPass" class="add-input" placeholder="Password" onkeypress="if(event.key==='Enter') attemptLogin()" />
+        </div>
+        <label class="auth-inline-check" style="margin-bottom:14px">
+            <input type="checkbox" id="loginSetupAfterSignin" />
+            <span>Open email and WhatsApp setup right after sign in.</span>
+        </label>
+        <div id="loginError" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;font-weight:500;"></div>
+        <button class="btn btn-dark" style="width:100%;height:40px;justify-content:center" onclick="attemptLogin()">Sign In</button>
+        <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-3)">
+            New here? <a href="#" style="color:var(--text);font-weight:600;text-decoration:none" onclick="toggleAuthView(true);return false;">Create an account</a>
+        </div>
+      </div>
+
+      <!-- CREATE ACCOUNT VIEW -->
+      <div id="viewSignUp" style="display:none">
+        <div class="login-title">Create Account.</div>
+        <div class="login-sub">Join Alfred today to get started.</div>
+        <div class="input-group" style="margin-bottom:12px">
+            <input type="text" id="regName" class="add-input" placeholder="First Name" />
+        </div>
+        <div class="input-group" style="margin-bottom:12px">
+            <input type="email" id="regEmail" class="add-input" placeholder="Email" />
+        </div>
+        <div class="input-group" style="margin-bottom:16px">
+            <input type="password" id="regPass" class="add-input" placeholder="Password (min 8 chars)" />
+        </div>
+        <label class="terms-chk" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);margin-bottom:16px;cursor:pointer">
+            <input type="checkbox" id="regTerms" style="accent-color:var(--indigo);width:16px;height:16px;cursor:pointer" />
+            <span>I accept the Terms and Conditions</span>
+        </label>
+        <div id="regError" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;font-weight:500;"></div>
+        <div class="auth-setup-box">
+            <div class="auth-setup-label">Optional Setup</div>
+            <input type="email" id="regEmailIntegrationAddress" class="add-input" placeholder="Connect an email account now (optional)" autocomplete="email" />
+            <input type="password" id="regEmailIntegrationPassword" class="add-input" placeholder="Email password or app password (optional)" autocomplete="new-password" />
+            <label class="auth-inline-check">
+                <input type="checkbox" id="regStartWhatsapp" />
+                <span>Start WhatsApp pairing right after account creation so Alfred can message people from your account.</span>
+            </label>
+        </div>
+        <button class="btn btn-dark" style="width:100%;height:40px;justify-content:center" onclick="attemptRegister()">Create Account</button>
+        <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-3)">
+            Have an account? <a href="#" style="color:var(--text);font-weight:600;text-decoration:none" onclick="toggleAuthView(false);return false;">Sign In</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="login-overlay" id="onboardingOverlay">
+    <div class="login-modal onboarding-modal" id="onboardingModal">
+      <div class="login-title">Finish Setup.</div>
+      <div class="login-sub">Everything happens here in the browser. Connect email, start WhatsApp pairing, or skip and do it later in Settings.</div>
+      <div class="onboarding-grid">
+        <div class="onboarding-card">
+          <div class="onboarding-card-title">Email</div>
+          <div class="onboarding-card-sub">Save the user's email account so Alfred can send prompt-driven emails from that mailbox.</div>
+          <div style="display:grid;gap:10px">
+            <input type="email" id="onboardingEmailIntegrationAddress" class="add-input" placeholder="you@company.com" autocomplete="email" />
+            <input type="password" id="onboardingEmailIntegrationPassword" class="add-input" placeholder="Email password or app password" autocomplete="new-password" />
+            <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">For Gmail or Google Workspace, use an App Password. Add custom mail servers below only if your provider needs them.</div>
+            <details style="border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,0.03)">
+              <summary style="cursor:pointer;font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Advanced mail server settings</summary>
+              <div style="display:grid;gap:10px;margin-top:12px">
+                <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                  <input type="text" id="onboardingEmailIntegrationSmtpHost" class="add-input" placeholder="SMTP host" autocomplete="off" />
+                  <input type="number" id="onboardingEmailIntegrationSmtpPort" class="add-input" placeholder="Port" min="1" max="65535" />
+                </div>
+                <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                  <input type="text" id="onboardingEmailIntegrationImapHost" class="add-input" placeholder="IMAP host" autocomplete="off" />
+                  <input type="number" id="onboardingEmailIntegrationImapPort" class="add-input" placeholder="Port" min="1" max="65535" />
+                </div>
+                <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Leave these blank for Gmail or Google Workspace.</div>
+              </div>
+            </details>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="onboardingSaveEmailBtn" class="btn btn-dark" style="flex:1;justify-content:center" onclick="saveEmailIntegration('onboarding')">Save Email</button>
+              <button id="onboardingDisconnectEmailBtn" class="btn btn-light" style="flex:1;justify-content:center" onclick="disconnectEmailIntegration('onboarding')">Disconnect</button>
+            </div>
+            <div id="onboardingEmailIntegrationStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Email not connected.</div>
+          </div>
+        </div>
+        <div class="onboarding-card">
+          <div class="onboarding-card-title">WhatsApp</div>
+          <div class="onboarding-card-sub">Start the user's own WhatsApp Web session here. Alfred will show a QR code in the browser instead of needing a terminal login.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button id="onboardingStartWhatsAppBtn" class="btn btn-dark" style="flex:1;justify-content:center" onclick="startWhatsAppIntegration('onboarding')">Start Pairing</button>
+            <button id="onboardingRefreshWhatsAppBtn" class="btn btn-light" style="flex:1;justify-content:center" onclick="refreshWhatsAppIntegration('onboarding')">Refresh</button>
+          </div>
+          <div id="onboardingWhatsAppIntegrationStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);margin-bottom:10px">WhatsApp not connected.</div>
+          <div id="onboardingWhatsAppQrWrap" style="display:none;padding:10px;border-radius:14px;background:rgba(0,0,0,0.03);border:0.5px solid var(--border);text-align:center">
+            <img id="onboardingWhatsAppQrImage" alt="WhatsApp QR" style="width:220px;max-width:100%;border-radius:12px;background:white;padding:10px" />
+            <div class="qr-help">Open WhatsApp on the phone and scan this QR code.</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px">
+        <button class="btn btn-light" style="flex:1;justify-content:center" onclick="closeOnboarding()">Skip for now</button>
+        <button class="btn btn-dark" style="flex:1;justify-content:center" onclick="closeOnboarding()">Continue to dashboard</button>
+      </div>
+      <div id="onboardingToast" style="text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--indigo);margin-top:12px;min-height:16px;"></div>
+    </div>
+  </div>
+
+  <script>
+    let alfredUser = localStorage.getItem('alfred_user') || 'SAICHARAN';
+
+    function clearAuthState() {
+      localStorage.removeItem('alfred_user');
+      alfredUser = null;
+    }
+
+    async function logout() {
+      try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+      clearAuthState();
+      window.location.href = '/';
+    }
+
+    function toggleAuthView(isSignUp) {
+      document.getElementById('viewSignIn').style.display = isSignUp ? 'none' : 'block';
+      document.getElementById('viewSignUp').style.display = isSignUp ? 'block' : 'none';
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('regError').style.display = 'none';
+    }
+
+    function triggerShake() {
+      const modal = document.getElementById('loginModal');
+      modal.classList.remove('shake');
+      void modal.offsetWidth; // trigger reflow
+      modal.classList.add('shake');
+    }
+
+    function getCookie(name) {
+      const prefix = name + '=';
+      return document.cookie.split(';').map(v => v.trim()).find(v => v.startsWith(prefix))?.slice(prefix.length) || '';
+    }
+
+    function setSignedInState(name) {
+      localStorage.setItem('alfred_user', name);
+      alfredUser = name;
+      document.getElementById('loginOverlay').classList.remove('open');
+      const firstName = (name || 'Alfred').split(' ')[0];
+      const welcomeName = document.getElementById('welcomeName');
+      if (welcomeName) setTimeout(() => typewriter(welcomeName, firstName + '.'), 250);
+      try {
+        refreshAll();
+      } catch (error) {
+        console.error('Post-login refresh failed:', error);
+      }
+      // Silently restore integrations (resumes WhatsApp session if previously connected)
+      loadIntegrations().catch(() => {});
+    }
+
+    function openOnboarding(options = {}) {
+      const overlay = document.getElementById('onboardingOverlay');
+      overlay.classList.add('open');
+      const emailAddressInput = document.getElementById('onboardingEmailIntegrationAddress');
+      const emailPasswordInput = document.getElementById('onboardingEmailIntegrationPassword');
+      if (emailAddressInput && typeof options.emailAddress === 'string') emailAddressInput.value = options.emailAddress;
+      if (emailPasswordInput && typeof options.emailPassword === 'string') emailPasswordInput.value = options.emailPassword;
+      loadIntegrations();
+      if (options.autoSaveEmail && options.emailAddress && options.emailPassword) {
+        setTimeout(() => saveEmailIntegration('onboarding', {
+          address: options.emailAddress,
+          app_password: options.emailPassword,
+        }), 100);
+      }
+      if (options.autoStartWhatsApp) {
+        setTimeout(() => startWhatsAppIntegration('onboarding'), 180);
+      }
+    }
+
+    function closeOnboarding() {
+      document.getElementById('onboardingOverlay').classList.remove('open');
+      if (!document.getElementById('settingsOverlay').classList.contains('open')) {
+        clearInterval(_whatsAppPollTimer);
+      }
+    }
+
+    async function attemptLogin() {
+      const em = document.getElementById('loginEmail').value.trim();
+      const pw = document.getElementById('loginPass').value;
+      const wantsSetup = document.getElementById('loginSetupAfterSignin').checked;
+      const err = document.getElementById('loginError');
+      if (!em || !pw) { err.textContent = "Please fill in all fields."; err.style.display = "block"; triggerShake(); return; }
+      
+      try {
+        const r = await fetch('/api/auth/login', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email: em, password: pw})
+        });
+        const d = await r.json().catch(() => ({ ok: false, error: 'Unexpected server response.' }));
+        if(!d.ok) { 
+          const details = d.details ? d.details.join(', ') : '';
+          err.textContent = details || d.error || 'Could not sign in.'; 
+          err.style.display = "block"; 
+          triggerShake(); return; 
+        }
+
+        err.style.display = "none";
+        setSignedInState(d.name);
+        if (wantsSetup) {
+          try {
+            openOnboarding();
+          } catch (setupError) {
+            console.error('Onboarding open failed:', setupError);
+            showToast('Signed in, but setup could not open automatically.');
+          }
+        }
+      } catch(e) {
+        console.error('Login failed:', e);
+        err.textContent = e?.message === 'Failed to fetch' ? 'Could not reach Alfred right now.' : (e?.message || 'Network error.');
+        err.style.display = "block";
+        triggerShake();
+      }
+    }
+
+    async function attemptRegister() {
+      const nm = document.getElementById('regName').value.trim();
+      const em = document.getElementById('regEmail').value.trim();
+      const pw = document.getElementById('regPass').value;
+      const terms = document.getElementById('regTerms').checked;
+      const connectEmail = document.getElementById('regEmailIntegrationAddress').value.trim();
+      const connectPassword = document.getElementById('regEmailIntegrationPassword').value;
+      const startWhatsapp = document.getElementById('regStartWhatsapp').checked;
+      const err = document.getElementById('regError');
+      
+      if (!nm || !em || !pw) { err.textContent = "Please fill in all fields."; err.style.display = "block"; triggerShake(); return; }
+      if (pw.length < 8) { err.textContent = "Password must be at least 8 characters long."; err.style.display = "block"; triggerShake(); return; }
+      if (!terms) { err.textContent = "You must accept the terms."; err.style.display = "block"; triggerShake(); return; }
+      if ((connectEmail && !connectPassword) || (!connectEmail && connectPassword)) {
+        err.textContent = "To connect email now, enter both the address and the password.";
+        err.style.display = "block";
+        triggerShake();
+        return;
+      }
+      
+      try {
+        const r = await fetch('/api/auth/register', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: nm, email: em, password: pw, accepts_terms: terms})
+        });
+        const d = await r.json().catch(() => ({ ok: false, error: 'Unexpected server response.' }));
+        if(!d.ok) { 
+          const details = d.details ? d.details.join(', ') : '';
+          err.textContent = details || d.error || 'Could not create account.'; 
+          err.style.display = "block"; 
+          triggerShake(); return; 
+        }
+
+        err.style.display = "none";
+        setSignedInState(d.name);
+        if (connectEmail || startWhatsapp) {
+          try {
+            openOnboarding({
+              emailAddress: connectEmail,
+              emailPassword: connectPassword,
+              autoSaveEmail: Boolean(connectEmail && connectPassword),
+              autoStartWhatsApp: startWhatsapp,
+            });
+          } catch (setupError) {
+            console.error('Onboarding open failed after register:', setupError);
+            showToast('Account created, but setup could not open automatically.');
+          }
+        }
+      } catch(e) {
+        console.error('Register failed:', e);
+        err.textContent = e?.message === 'Failed to fetch' ? 'Could not reach Alfred right now.' : (e?.message || 'Network error.');
+        err.style.display = "block";
+        triggerShake();
+      }
+    }
+
+    function apiFetch(url, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      const method = (options.method || 'GET').toUpperCase();
+      const timeoutMs = Number.isFinite(options.timeoutMs)
+        ? options.timeoutMs
+        : (method === 'GET' ? 15000 : 30000);
+      const controller = options.signal ? null : new AbortController();
+      const signal = options.signal || controller.signal;
+      const requestOptions = { ...options, headers, credentials: 'same-origin', signal };
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const csrf = getCookie('alfred_csrf');
+        if (csrf) requestOptions.headers['X-CSRF-Token'] = csrf;
+      }
+      const timeoutId = controller
+        ? setTimeout(() => controller.abort(), timeoutMs)
+        : null;
+      return fetch(url, requestOptions)
+        .catch((error) => {
+          if (error?.name === 'AbortError') {
+            throw new Error('Request timed out. Please try again.');
+          }
+          throw error;
+        })
+        .then(async (response) => {
+          if (response.status === 401 || response.status === 403) {
+            clearAuthState();
+            document.getElementById('loginOverlay').classList.add('open');
+            throw new Error('Session expired');
+          }
+          return response;
+        })
+        .finally(() => {
+          if (timeoutId) clearTimeout(timeoutId);
+        });
+    }
+
+    function getIntegrationActionButton(scope, action) {
+      const ids = {
+        settings: {
+          saveEmail: 'settingsSaveEmailBtn',
+          disconnectEmail: 'settingsDisconnectEmailBtn',
+          startWhatsApp: 'settingsStartWhatsAppBtn',
+          refreshWhatsApp: 'settingsRefreshWhatsAppBtn',
+          disconnectWhatsApp: 'settingsDisconnectWhatsAppBtn',
+        },
+        onboarding: {
+          saveEmail: 'onboardingSaveEmailBtn',
+          disconnectEmail: 'onboardingDisconnectEmailBtn',
+          startWhatsApp: 'onboardingStartWhatsAppBtn',
+          refreshWhatsApp: 'onboardingRefreshWhatsAppBtn',
+        },
+      };
+      const id = ids[scope]?.[action];
+      return id ? document.getElementById(id) : null;
+    }
+
+    function setButtonBusy(button, busy, busyLabel) {
+      if (!button) return;
+      if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent;
+      button.disabled = busy;
+      button.style.opacity = busy ? '0.7' : '';
+      button.style.pointerEvents = busy ? 'none' : '';
+      button.textContent = busy ? busyLabel : button.dataset.defaultLabel;
+    }
+
+    function bindEnterSubmit(ids, handler) {
+      ids.forEach((id) => {
+        const node = document.getElementById(id);
+        if (!node) return;
+        node.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' || event.shiftKey) return;
+          event.preventDefault();
+          handler();
+        });
+      });
+    }
+
+    async function bootstrapSession() {
+      try {
+        const me = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (!me.ok) throw new Error('Not authenticated');
+        const data = await me.json();
+        setSignedInState(data.name);
+      } catch (_) {
+        clearAuthState();
+        document.getElementById('loginOverlay').classList.add('open');
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       1. PAGE OVERLAY — removed after animation done
+    ═══════════════════════════════════════════════ */
+    const overlay = document.getElementById('pageOverlay');
+    if (overlay) overlay.addEventListener('animationend', () => overlay.remove());
+
+    /* ═══════════════════════════════════════════════
+       2. INTERSECTION OBSERVER — Apple scroll reveals
+    ═══════════════════════════════════════════════ */
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-scale, .stagger-children').forEach(el => io.observe(el));
+
+    /* ═══════════════════════════════════════════════
+       3. AMBIENT GLOW TRACKING (Simplified)
+    ═══════════════════════════════════════════════ */
+    const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+    if (hasFinePointer) {
+      document.addEventListener('mousemove', e => {
+        const xPct = (e.clientX / window.innerWidth) * 100;
+        const yPct = (e.clientY / window.innerHeight) * 100;
+        document.documentElement.style.setProperty('--field-x', `${xPct}%`);
+        document.documentElement.style.setProperty('--field-y', `${yPct}%`);
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       6. CLOCK with typewriter name reveal
+    ═══════════════════════════════════════════════ */
+    function updateClock() {
+      const n = new Date();
+      const h = String(n.getHours()).padStart(2, '0');
+      const m = String(n.getMinutes()).padStart(2, '0');
+      document.getElementById('time').innerHTML = h + '<span class="time-colon">:</span>' + m;
+      document.getElementById('welcomeTime').textContent = h + ':' + m;
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById('date').textContent = days[n.getDay()] + ', ' + months[n.getMonth()] + ' ' + n.getDate() + ', ' + n.getFullYear();
+      const hr = n.getHours();
+      let greet, sub;
+      if (hr >= 5 && hr < 12) { greet = 'Good morning'; sub = "Let's make today count." }
+      else if (hr >= 12 && hr < 17) { greet = 'Good afternoon'; sub = "How's the day going?" }
+      else if (hr >= 17 && hr < 21) { greet = 'Good evening'; sub = "Time to wind down." }
+      else { greet = 'Good night'; sub = "Rest well, big day tomorrow." }
+      document.getElementById('greet').textContent = greet + '.';
+      document.getElementById('welcomeGreeting').textContent = greet;
+      document.getElementById('welcomeSub').textContent = sub;
+    }
+    updateClock(); setInterval(updateClock, 1000);
+
+    /* Typewriter effect for welcome name */
+    function typewriter(el, text, speed = 55) {
+      el.textContent = '';
+      let i = 0;
+      const tick = () => { if (i < text.length) { el.textContent += text[i++]; setTimeout(tick, speed); } };
+      tick();
+    }
+
+    /* ═══════════════════════════════════════════════
+       7. MEMORY (load + typewriter name)
+    ═══════════════════════════════════════════════ */
+    if (alfredUser) {
+      apiFetch('/memory').then(r => r.json()).then(d => {
+        const name = (d.name || alfredUser || '').split(' ')[0];
+        if (name) setTimeout(() => typewriter(document.getElementById('welcomeName'), name + '.'), 800);
+      }).catch(() => { });
+    } else {
+      setTimeout(() => typewriter(document.getElementById('welcomeName'), 'Alfred.'), 800);
+    }
+
+    /* ═══════════════════════════════════════════════
+       8. DATA LOADERS
+    ═══════════════════════════════════════════════ */
+    async function loadWeather() {
+      if (!alfredUser) return;
+      const skel = document.getElementById('weatherSkel');
+      const content = document.getElementById('weatherContent');
+      function _showWeather() {
+        if (skel) { skel.style.transition = 'opacity 0.28s'; skel.style.opacity = '0'; setTimeout(() => { skel.style.display = 'none'; if (content) { content.style.display = ''; content.classList.add('content-loaded'); } }, 280); }
+      }
+      try {
+        const d = await apiFetch('/weather').then(r => r.json());
+        animateValue('temp', d.temp, '°C');
+        document.getElementById('desc').textContent = d.description;
+        document.getElementById('feels').textContent = 'Feels ' + d.feels_like + '°C';
+        document.getElementById('humidity').textContent = 'H ' + d.humidity + '%';
+        _showWeather();
+      } catch (e) {
+        document.getElementById('desc').textContent = 'Could not load';
+        _showWeather();
+      }
+    }
+    loadWeather();
+
+    async function loadStocks() {
+      if (!alfredUser) return;
+      const list = document.getElementById('stockList');
+      try {
+        const d = await apiFetch('/stocks').then(r => r.json());
+        const frag = document.createDocumentFragment();
+        const rows = [];
+        d.stocks.forEach((s) => {
+          const up = s.change >= 0;
+          const price = s.price ? s.price.toLocaleString() : '--';
+          const chgStr = s.price ? (up ? '+' : '') + s.change + '%' : '';
+          const row = document.createElement('div');
+          row.className = 'stock-row';
+          row.style.cssText = 'opacity:0;transform:translateX(-10px)';
+          row.innerHTML = `<div class="stock-name">${escapeHtml(s.name)}</div><div><div class="stock-price">${escapeHtml(price)}</div><div class="stock-chg ${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${escapeHtml(chgStr)}</div></div>`;
+          frag.appendChild(row);
+          rows.push(row);
+        });
+        list.style.transition = 'opacity 0.22s'; list.style.opacity = '0';
+        setTimeout(() => {
+          list.innerHTML = ''; list.appendChild(frag);
+          list.style.opacity = '1';
+          rows.forEach((row, i) => setTimeout(() => { row.style.transition = 'opacity 0.42s cubic-bezier(0.16,1,0.3,1), transform 0.42s cubic-bezier(0.16,1,0.3,1)'; row.style.opacity = '1'; row.style.transform = 'none'; }, 55 * i));
+          setTimeout(() => list.style.transition = '', 250);
+        }, 220);
+      } catch (e) { setContent(list, '<div class="no-data">Could not load</div>') }
+    }
+    loadStocks();
+
+    async function loadTasks() {
+      if (!alfredUser) return;
+      try {
+        const tasks = await apiFetch('/tasks').then(r => r.json());
+        const list = document.getElementById('taskList');
+        if (!tasks.length) { setContent(list, '<div class="no-data">No tasks yet — you\'re all clear ✓</div>'); return }
+        setContent(list, tasks.map(t => `<div class="task-row ${t.done ? 'done' : ''}">
+          <div class="task-chk" onclick="toggleTask(${t.id})">${t.done ? '✓' : ''}</div>
+          <div class="task-txt" onclick="toggleTask(${t.id})">${escapeHtml(t.text)}</div>
+          <button class="task-del" onclick="deleteTask(${t.id})" title="Delete">×</button>
+        </div>`).join(''));
+      } catch (e) { }
+    }
+    async function addTask() {
+      const i = document.getElementById('taskInput');
+      if (!i.value.trim()) return;
+      const btn = i.closest('.card').querySelector('.add-btn');
+      btn.textContent = '✓'; btn.style.background = 'var(--green)'; btn.style.transform = 'scale(1.2) rotate(0deg)';
+      await apiFetch('/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: i.value.trim() }) });
+      i.value = ''; loadTasks();
+      setTimeout(() => { btn.textContent = '+'; btn.style.background = ''; btn.style.transform = ''; }, 700);
+    }
+    async function toggleTask(id) { await apiFetch('/tasks/' + id, { method: 'PUT' }); loadTasks(); }
+    async function deleteTask(id) {
+      await apiFetch('/tasks/' + id, { method: 'DELETE' });
+      showToast('Task removed');
+      loadTasks();
+    }
+    loadTasks();
+
+    async function loadContacts() {
+      if (!alfredUser) return;
+      const list = document.getElementById('contactsList');
+      if (!list) return;
+      try {
+        const contacts = await apiFetch('/contacts').then(r => r.json());
+        if (!contacts.length) {
+          setContent(list, '<div class="no-data">No contacts yet. Add one from your laptop or import WhatsApp contacts.</div>');
+          return;
+        }
+        const recent = contacts.slice(0, 8);
+        setContent(list, recent.map(contact => {
+          const meta = [contact.phone, contact.email].filter(Boolean).join(' · ') || 'No phone or email saved yet';
+          const source = contact.source === 'whatsapp' ? 'WhatsApp' : contact.source === 'legacy' ? 'Imported' : 'Manual';
+          return `
+            <div class="contact-row">
+              <div class="contact-main">
+                <div class="contact-name">${escapeHtml(contact.name)}</div>
+                <div class="contact-meta">${escapeHtml(meta)}</div>
+              </div>
+              <div class="contact-side">
+                <div class="contact-chip">${escapeHtml(source)}</div>
+                <button class="task-del" onclick="deleteContact('${escapeHtml(contact.id)}')" title="Delete">×</button>
+              </div>
+            </div>`;
+        }).join(''));
+      } catch (e) {
+        setContent(list, '<div class="no-data">Could not load contacts</div>');
+      }
+    }
+
+    async function addContact() {
+      const nameInput = document.getElementById('contactNameInput');
+      const phoneInput = document.getElementById('contactPhoneInput');
+      const emailInput = document.getElementById('contactEmailInput');
+      const name = nameInput?.value.trim() || '';
+      const phone = phoneInput?.value.trim() || '';
+      const email = emailInput?.value.trim() || '';
+      if (!name) {
+        showToast('Add a contact name first');
+        return;
+      }
+      try {
+        const response = await apiFetch('/contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, email }),
+        });
+        const data = await response.json();
+        const errorText = Array.isArray(data.detail)
+          ? data.detail.join(', ')
+          : (data.detail || data.error || 'Could not save contact');
+        if (!response.ok || !data.ok) throw new Error(errorText);
+        showToast(data.created ? 'Contact added' : 'Contact updated');
+        if (nameInput) nameInput.value = '';
+        if (phoneInput) phoneInput.value = '';
+        if (emailInput) emailInput.value = '';
+        loadContacts();
+      } catch (e) {
+        showToast(e.message || 'Could not save contact');
+      }
+    }
+
+    async function deleteContact(id) {
+      try {
+        const response = await apiFetch('/contacts/' + id, { method: 'DELETE' });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.detail || data.error || 'Could not delete contact');
+        showToast('Contact removed');
+        loadContacts();
+      } catch (e) {
+        showToast(e.message || 'Could not delete contact');
+      }
+    }
+
+    async function importWhatsAppContacts() {
+      try {
+        const response = await apiFetch('/contacts/import/whatsapp', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.detail || data.error || 'Could not import WhatsApp contacts');
+        const added = Number(data.imported || 0);
+        const updated = Number(data.updated || 0);
+        const parts = [];
+        if (added) parts.push(`${added} added`);
+        if (updated) parts.push(`${updated} refreshed`);
+        showToast(parts.length ? `WhatsApp contacts ${parts.join(', ')}` : 'No new WhatsApp contacts found');
+        loadContacts();
+      } catch (e) {
+        showToast(e.message || 'Could not import WhatsApp contacts');
+      }
+    }
+    loadContacts();
+
+    async function loadCalendar() {
+      if (!alfredUser) return;
+      try {
+        const d = await apiFetch('/calendar').then(r => r.json());
+        const list = document.getElementById('eventList');
+        if (!d.events || !d.events.length) { setContent(list, '<div class="no-data">No events today — enjoy the free time!</div>'); return }
+        setContent(list, d.events.map(e => `<div class="event-row"><div class="event-time">${escapeHtml(e.time || 'All day')}</div><div class="event-title">${escapeHtml(e.title)}</div></div>`).join(''));
+      } catch (e) { setContent(document.getElementById('eventList'), '<div class="no-data">Could not load</div>') }
+    }
+    loadCalendar();
+
+    async function loadNews() {
+      if (!alfredUser) return;
+      try {
+        const d = await apiFetch('/news').then(r => r.json());
+        const list = document.getElementById('newsList');
+        if (!d.articles || !d.articles.length) { setContent(list, '<div class="no-data">No news at the moment</div>'); return }
+        const html = d.articles.slice(0, 6).map((a, i) => {
+          const tag = a.url ? 'a' : 'div';
+          const attrs = a.url
+            ? `href="${escapeHtml(a.url)}" target="_blank" rel="noopener noreferrer"`
+            : '';
+          return `<${tag} class="news-row" ${attrs} style="opacity:0;transform:translateY(6px);transition:opacity 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.07}s, transform 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.07}s">
+            <div class="news-title">${escapeHtml(a.title)}</div>
+            <div class="news-src">${escapeHtml(a.source || '')}</div>
+          </${tag}>`;
+        }).join('');
+        list.style.opacity = '0'; list.style.transition = 'opacity 0.2s';
+        setTimeout(() => {
+          list.innerHTML = html; list.style.opacity = '1';
+          requestAnimationFrame(() => requestAnimationFrame(() => list.querySelectorAll('.news-row').forEach(r => { r.style.opacity = '1'; r.style.transform = 'translateY(0)'; })));
+          setTimeout(() => list.style.transition = '', 250);
+        }, 200);
+      } catch (e) { }
+    }
+    loadNews();
+
+    async function loadMemory() {
+      if (!alfredUser) return;
+      try {
+        const d = await apiFetch('/memory').then(r => r.json());
+        const grid = document.getElementById('memGrid');
+        const keys = Object.keys(d).slice(0, 8);
+        if (!keys.length) { setContent(grid, '<div class="no-data">Nothing stored yet</div>'); return }
+        setContent(grid, keys.map(k => `<div class="mem-item"><div class="mem-key">${escapeHtml(k.replace(/_/g, ' '))}</div><div class="mem-val" title="${escapeHtml(d[k])}">${escapeHtml(d[k])}</div></div>`).join(''));
+      } catch (e) { }
+    }
+    loadMemory();
+
+    async function loadHabits() {
+      if (!alfredUser) return;
+      try {
+        const d = await apiFetch('/habits').then(r => r.json());
+        const counts = d.message_counts || {};
+        const list = document.getElementById('habitList');
+        if (!Object.keys(counts).length) { setContent(list, '<div class="no-data">Keep using Alfred…</div>'); return }
+        const max = Math.max(...Object.values(counts));
+        const html = Object.entries(counts).slice(0, 6).map(([k, v]) => `
+      <div class="habit-row">
+        <div class="habit-name">${escapeHtml(k)}</div>
+        <div class="habit-track"><div class="habit-fill" data-pct="${(v / max * 100).toFixed(1)}"></div></div>
+        <div class="habit-n">${escapeHtml(v)}</div>
+      </div>`).join('');
+        list.style.opacity = '0'; list.style.transition = 'opacity 0.22s';
+        setTimeout(() => {
+          list.innerHTML = html; list.style.opacity = '1';
+          requestAnimationFrame(() => {
+            list.querySelectorAll('.habit-fill').forEach((el, i) => setTimeout(() => { el.style.transition = 'width 1s cubic-bezier(0.16,1,0.3,1)'; el.style.width = el.dataset.pct + '%'; }, 80 + i * 60));
+          });
+          setTimeout(() => list.style.transition = '', 250);
+        }, 220);
+      } catch (e) { }
+    }
+    loadHabits();
+
+    /* ═══════════════════════════════════════════════
+       8b. SMOOTH CONTENT SWAP HELPER
+    ═══════════════════════════════════════════════ */
+    function setContent(el, html) {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(7px)';
+      el.style.transition = 'none';
+      el.innerHTML = html;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        el.style.transition = 'opacity 0.38s cubic-bezier(0.16,1,0.3,1), transform 0.38s cubic-bezier(0.16,1,0.3,1)';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+        setTimeout(() => { el.style.transition = ''; el.style.opacity = ''; el.style.transform = ''; }, 420);
+      }));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* ═══════════════════════════════════════════════
+       9. NUMBER COUNTUP (Apple-style metric animation)
+    ═══════════════════════════════════════════════ */
+    function animateValue(id, target, suffix = '') {
+      const el = document.getElementById(id);
+      if (!el || isNaN(target)) { if (el) el.textContent = target + suffix; return; }
+      const start = parseFloat(el.textContent) || 0;
+      const dur = 900;
+      const startTime = performance.now();
+      const step = now => {
+        const p = Math.min((now - startTime) / dur, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        const val = start + (target - start) * ease;
+        el.textContent = (Number.isInteger(target) ? Math.round(val) : val.toFixed(1)) + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    /* ═══════════════════════════════════════════════
+       10. QUICK ACTION + REFRESH
+    ═══════════════════════════════════════════════ */
+    async function go(text) {
+      await apiFetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: text }] }) });
+      window.location.href = '/chat-ui';
+    }
+    function refreshAll() {
+      loadWeather(); loadStocks(); loadTasks(); loadContacts(); loadCalendar(); loadNews(); loadMemory(); loadHabits(); loadNotes(); loadNowPlaying(); loadPomodoro();
+    }
+
+    setInterval(refreshAll, 60000);
+
+    /* ══ NOW PLAYING ══ */
+    function fmtSecs(s) { const m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
+    async function loadNowPlaying() {
+      if (!alfredUser) return;
+      try {
+        const d = await apiFetch('/spotify/now-playing').then(r => r.json());
+        const card = document.getElementById('nowPlayingCard');
+        if (!d.playing) {
+          setContent(card, '<div class="np-idle"><div class="np-idle-icon">🎵</div><p>Nothing playing right now</p></div>');
+          return;
+        }
+        const pct = d.duration > 0 ? Math.min((d.position / d.duration) * 100, 100).toFixed(1) : 0;
+        setContent(card, `
+          <div class="np-wrap">
+            <div class="np-art">🎵</div>
+            <div class="np-info">
+              <div class="np-track">${escapeHtml(d.track)}</div>
+              <div class="np-artist">${escapeHtml(d.artist)}${d.album ? ' · ' + escapeHtml(d.album) : ''}</div>
+            </div>
+          </div>
+          <div class="np-bar-wrap"><div class="np-bar" style="width:${pct}%"></div></div>
+          <div class="np-time-row">
+            <span class="np-time-val">${fmtSecs(d.position)}</span>
+            <span class="np-time-val">${fmtSecs(d.duration)}</span>
+          </div>
+          <div class="np-controls">
+            <button class="np-ctrl" onclick="spotifyCtrl('previous')">⏮</button>
+            <button class="np-ctrl play-pause" onclick="spotifyCtrl('pause')">⏸</button>
+            <button class="np-ctrl" onclick="spotifyCtrl('next')">⏭</button>
+          </div>`);
+      } catch (e) { }
+    }
+    async function spotifyCtrl(action) {
+      await apiFetch('/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: action + ' spotify' }] }) });
+      setTimeout(loadNowPlaying, 1400);
+    }
+    loadNowPlaying();
+    setInterval(loadNowPlaying, 15000);
+
+    /* ══ NOTES ══ */
+    async function loadNotes() {
+      const list = document.getElementById('notesList');
+      if (!list) return;
+      try {
+        const notes = await apiFetch('/notes').then(r => r.json());
+        if (!notes.length) { setContent(list, '<div class="no-data">No notes yet — jot something down!</div>'); return; }
+        const recent = notes.slice(-5).reverse();
+        setContent(list, recent.map(n => `
+          <div class="note-row">
+            <div class="note-time">${escapeHtml(n.time || '')}</div>
+            <div class="note-text">${escapeHtml(n.content)}</div>
+          </div>`).join(''));
+      } catch (e) { }
+    }
+    async function addNote() {
+      const i = document.getElementById('noteInput');
+      if (!i || !i.value.trim()) return;
+      const btn = i.closest('.card').querySelector('.add-btn');
+      btn.textContent = '✓'; btn.style.background = 'var(--violet)'; btn.style.transform = 'scale(1.2)';
+      await apiFetch('/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: i.value.trim() }) });
+      showToast('Note saved ✓'); i.value = ''; loadNotes();
+      setTimeout(() => { btn.textContent = '+'; btn.style.background = ''; btn.style.transform = ''; }, 700);
+    }
+    loadNotes();
+
+    /* ══ POMODORO ══ */
+    const POMO_WORK = 25 * 60, POMO_BREAK = 5 * 60, POMO_LONG = 15 * 60, POMO_CIRC = 295.3;
+    let pomoRunning = false, pomoInterval = null;
+    let pomoSecsLeft = POMO_WORK, pomoPhase = 'work', pomoSession = 0, pomoTotal = 4;
+    
+    async function loadPomodoro() {
+      try {
+        const d = await apiFetch('/pomodoro').then(r => r.json());
+        pomoSecsLeft = d.seconds_left;
+        pomoPhase = d.phase;
+        pomoSession = d.session;
+        const btn = document.getElementById('pomoStartBtn');
+        
+        if (d.is_running && !pomoRunning) {
+          pomoRunning = true;
+          clearInterval(pomoInterval);
+          pomoInterval = setInterval(pomoTick, 1000);
+          if (btn) btn.textContent = '⏸ Pause';
+        } else if (!d.is_running && pomoRunning) {
+          pomoRunning = false;
+          clearInterval(pomoInterval);
+          if (btn) btn.textContent = d.seconds_left === POMO_WORK ? '▶ Start' : '▶ Resume';
+        }
+        pomoRenderTime();
+      } catch (e) {}
+    }
+
+    async function savePomodoro() {
+      await apiFetch('/pomodoro', { 
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ is_running: pomoRunning, seconds_left: pomoSecsLeft, phase: pomoPhase, session: pomoSession }) 
+      });
+    }
+
+    function renderPomoDots() {
+      const el = document.getElementById('pomoDots');
+      if (el) el.innerHTML = Array.from({ length: pomoTotal }, (_, i) =>
+        `<div class="pomo-dot ${i < pomoSession ? 'done' : ''}"></div>`).join('');
+    }
+    function pomoRenderTime() {
+      const m = Math.floor(pomoSecsLeft / 60), s = pomoSecsLeft % 60;
+      const el = document.getElementById('pomoTime');
+      const ring = document.getElementById('pomoRing');
+      const circ = document.getElementById('pomoCircle');
+      const phase = document.getElementById('pomoPhase');
+      const total = pomoPhase === 'work' ? POMO_WORK : (pomoPhase === 'break' ? POMO_BREAK : POMO_LONG);
+      if (el) el.textContent = m + ':' + String(s).padStart(2, '0');
+      if (circ) circ.style.strokeDashoffset = POMO_CIRC * (1 - pomoSecsLeft / total);
+      if (ring) ring.className = 'pomo-ring ' + (pomoPhase === 'work' ? 'work' : pomoPhase === 'break' ? 'break' : 'longbreak');
+      if (phase) phase.textContent = pomoPhase === 'work' ? 'Focus' : pomoPhase === 'break' ? 'Break' : 'Long Break';
+      const lbl = document.getElementById('pomoSessionsLabel');
+      if (lbl) lbl.textContent = `Session ${pomoSession + 1} of ${pomoTotal}`;
+      renderPomoDots();
+    }
+    function pomoTick() {
+      if (pomoSecsLeft > 0) { pomoSecsLeft--; pomoRenderTime(); return; }
+      if (pomoPhase === 'work') {
+        pomoSession++;
+        if (pomoSession >= pomoTotal) { pomoSession = 0; pomoPhase = 'longbreak'; pomoSecsLeft = POMO_LONG; showToast('🎉 Long break — you earned it!'); }
+        else { pomoPhase = 'break'; pomoSecsLeft = POMO_BREAK; showToast('☕ Break time! Well done.'); }
+      } else { pomoPhase = 'work'; pomoSecsLeft = POMO_WORK; showToast('💪 Back to focus!'); }
+      pomoRenderTime();
+      savePomodoro();
+    }
+    function pomoToggle() {
+      pomoRunning = !pomoRunning;
+      const btn = document.getElementById('pomoStartBtn');
+      if (pomoRunning) { pomoInterval = setInterval(pomoTick, 1000); if (btn) btn.textContent = '⏸ Pause'; }
+      else { clearInterval(pomoInterval); if (btn) btn.textContent = '▶ Resume'; }
+      savePomodoro();
+    }
+    function pomoReset() {
+      clearInterval(pomoInterval); pomoRunning = false;
+      pomoSecsLeft = POMO_WORK; pomoPhase = 'work'; pomoSession = 0;
+      const btn = document.getElementById('pomoStartBtn');
+      if (btn) btn.textContent = '▶ Start';
+      pomoRenderTime();
+      savePomodoro();
+    }
+    loadPomodoro();
+
+    /* ══ TOAST ══ */
+    let _toastTimer;
+    function showToast(msg) {
+      let t = document.getElementById('alfredToast');
+      if (!t) { t = document.createElement('div'); t.id = 'alfredToast'; document.body.appendChild(t); }
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    /* ══ THEME TOGGLE ══ */
+    (function () {
+      const saved = localStorage.getItem('alfred-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', saved);
+      const btn = document.getElementById('themeBtn');
+      if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      const next = isDark ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('alfred-theme', next);
+      const btn = document.getElementById('themeBtn');
+      if (btn) {
+        btn.style.transform = 'rotate(360deg) scale(1.2)';
+        btn.textContent = next === 'dark' ? '☀️' : '🌙';
+        setTimeout(() => btn.style.transform = '', 400);
+      }
+      showToast(next === 'dark' ? '🌙 Dark mode on' : '☀️ Light mode on');
+    }
+
+    // Listen for cross-tab theme changes
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'alfred-theme') {
+        document.documentElement.setAttribute('data-theme', e.newValue);
+        const btn = document.getElementById('themeBtn');
+        if (btn) btn.textContent = e.newValue === 'dark' ? '☀️' : '🌙';
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      const active = document.activeElement.tagName;
+      if (active === 'INPUT' || active === 'TEXTAREA') return;
+      if (e.key === '/') { e.preventDefault(); const inp = document.getElementById('taskInput'); if (inp) { inp.focus(); inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
+      if (e.key === 'n') { e.preventDefault(); const inp = document.getElementById('noteInput'); if (inp) { inp.focus(); inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
+      if (e.key === ' ') { e.preventDefault(); pomoToggle(); }
+    });
+
+    /* ═══════════════════════════════════════════════
+       11. SETTINGS PANEL
+    ═══════════════════════════════════════════════ */
+
+    let _whatsAppPollTimer = null;
+
+    function _updateChip(mode) {
+      if (window.AlfredShortcuts && typeof AlfredShortcuts.init === 'function') {
+        // The engine handles its own chip refresh
+        if (typeof AlfredShortcuts.setMode === 'function') {
+           // If we are just updating visuals, call the internal refresh if exposed, 
+           // but here we just manually trigger for safety if needed.
+           const chip = document.getElementById('shortcutChip');
+           const label = document.getElementById('shortcutChipLabel');
+           if (!chip || !label) return;
+           label.textContent = mode === 'voice' ? '🎙 Hey Alfred' : 'Shortcuts off';
+           chip.classList.toggle('active', mode === 'voice');
+        }
+      }
+    }
+
+    function getIntegrationNodes(scope = 'settings') {
+      if (scope === 'onboarding') {
+        return {
+          emailAddress: document.getElementById('onboardingEmailIntegrationAddress'),
+          emailPassword: document.getElementById('onboardingEmailIntegrationPassword'),
+          smtpHost: document.getElementById('onboardingEmailIntegrationSmtpHost'),
+          smtpPort: document.getElementById('onboardingEmailIntegrationSmtpPort'),
+          imapHost: document.getElementById('onboardingEmailIntegrationImapHost'),
+          imapPort: document.getElementById('onboardingEmailIntegrationImapPort'),
+          emailStatus: document.getElementById('onboardingEmailIntegrationStatus'),
+          whatsappStatus: document.getElementById('onboardingWhatsAppIntegrationStatus'),
+          qrWrap: document.getElementById('onboardingWhatsAppQrWrap'),
+          qrImage: document.getElementById('onboardingWhatsAppQrImage'),
+        };
+      }
+      return {
+        emailAddress: document.getElementById('emailIntegrationAddress'),
+        emailPassword: document.getElementById('emailIntegrationPassword'),
+        smtpHost: document.getElementById('emailIntegrationSmtpHost'),
+        smtpPort: document.getElementById('emailIntegrationSmtpPort'),
+        imapHost: document.getElementById('emailIntegrationImapHost'),
+        imapPort: document.getElementById('emailIntegrationImapPort'),
+        emailStatus: document.getElementById('emailIntegrationStatus'),
+        whatsappStatus: document.getElementById('whatsAppIntegrationStatus'),
+        qrWrap: document.getElementById('whatsAppQrWrap'),
+        qrImage: document.getElementById('whatsAppQrImage'),
+      };
+    }
+
+    function notifyIntegration(scope, message) {
+      if (scope === 'onboarding') showOnboardingToast(message);
+      else showSettingsToast(message);
+    }
+
+    function renderIntegrationScope(scope, data) {
+      const email = data.email || {};
+      const whatsapp = data.whatsapp || {};
+      const nodes = getIntegrationNodes(scope);
+      const whatsappConnected = Boolean(whatsapp.connected || whatsapp.ready);
+
+      if (Object.prototype.hasOwnProperty.call(email, 'connected') || Object.prototype.hasOwnProperty.call(email, 'address')) {
+        if (nodes.emailAddress) nodes.emailAddress.value = email.address || '';
+        if (nodes.emailPassword) nodes.emailPassword.value = '';
+        if (nodes.smtpHost) nodes.smtpHost.value = email.smtp_host || '';
+        if (nodes.smtpPort) nodes.smtpPort.value = email.smtp_port || '';
+        if (nodes.imapHost) nodes.imapHost.value = email.imap_host || '';
+        if (nodes.imapPort) nodes.imapPort.value = email.imap_port || '';
+        if (nodes.emailStatus) {
+          nodes.emailStatus.textContent = email.connected
+            ? `Connected: ${email.address}`
+            : (email.last_error || 'Email not connected.');
+        }
+      }
+
+      if (nodes.whatsappStatus) {
+        if (whatsappConnected) nodes.whatsappStatus.textContent = 'WhatsApp connected and ready.';
+        else if (whatsapp.qr) nodes.whatsappStatus.textContent = 'Scan the QR code to finish connecting WhatsApp.';
+        else nodes.whatsappStatus.textContent = whatsapp.last_error || 'WhatsApp not connected.';
+      }
+
+      if (nodes.qrWrap && nodes.qrImage) {
+        if (whatsapp.qr) {
+          nodes.qrWrap.style.display = 'block';
+          nodes.qrImage.src = whatsapp.qr;
+        } else {
+          nodes.qrWrap.style.display = 'none';
+          nodes.qrImage.removeAttribute('src');
+        }
+      }
+    }
+
+    function renderIntegrations(data) {
+      renderIntegrationScope('settings', data);
+      renderIntegrationScope('onboarding', data);
+    }
+
+    async function loadIntegrations() {
+      if (!alfredUser) return;
+      try {
+        const data = await apiFetch('/api/integrations').then(r => r.json());
+        renderIntegrations(data);
+        if (data.whatsapp && data.whatsapp.qr && !data.whatsapp.connected) startWhatsAppPolling();
+      } catch (e) {
+        showSettingsToast('Could not load integrations');
+      }
+    }
+
+    function startWhatsAppPolling() {
+      clearInterval(_whatsAppPollTimer);
+      let attempts = 0;
+      _whatsAppPollTimer = setInterval(async () => {
+        try {
+          const data = await apiFetch('/api/integrations/whatsapp/status').then(r => r.json());
+          renderIntegrations({ email: {}, whatsapp: data });
+          const overlayOpen = document.getElementById('settingsOverlay').classList.contains('open') || document.getElementById('onboardingOverlay').classList.contains('open');
+          if (data.ready || !overlayOpen) {
+            clearInterval(_whatsAppPollTimer);
+          }
+          attempts += 1;
+          if (attempts >= 20 && !data.qr && !data.ready) {
+            clearInterval(_whatsAppPollTimer);
+            _whatsAppPollTimer = setInterval(async () => {
+              try {
+                const retryData = await apiFetch('/api/integrations/whatsapp/status').then(r => r.json());
+                renderIntegrations({ email: {}, whatsapp: retryData });
+                const retryOverlayOpen = document.getElementById('settingsOverlay').classList.contains('open') || document.getElementById('onboardingOverlay').classList.contains('open');
+                if (retryData.ready || !retryOverlayOpen) clearInterval(_whatsAppPollTimer);
+              } catch (_) {
+                clearInterval(_whatsAppPollTimer);
+              }
+            }, 2500);
+          }
+        } catch (_) {
+          clearInterval(_whatsAppPollTimer);
+        }
+      }, 1000);
+    }
+
+    async function saveEmailIntegration(scope = 'settings', provided = null) {
+      const nodes = getIntegrationNodes(scope);
+      const button = getIntegrationActionButton(scope, 'saveEmail');
+      const address = (provided?.address ?? nodes.emailAddress?.value ?? '').trim();
+      const app_password = provided?.app_password ?? nodes.emailPassword?.value ?? '';
+      const smtp_host = (provided?.smtp_host ?? nodes.smtpHost?.value ?? '').trim();
+      const smtp_port_raw = String(provided?.smtp_port ?? nodes.smtpPort?.value ?? '').trim();
+      const imap_host = (provided?.imap_host ?? nodes.imapHost?.value ?? '').trim();
+      const imap_port_raw = String(provided?.imap_port ?? nodes.imapPort?.value ?? '').trim();
+      if (!address || !app_password) {
+        notifyIntegration(scope, 'Enter your email and password');
+        return;
+      }
+      try {
+        setButtonBusy(button, true, 'Saving...');
+        if (nodes.emailStatus) nodes.emailStatus.textContent = 'Connecting email...';
+        const payload = { address, app_password };
+        if (smtp_host) payload.smtp_host = smtp_host;
+        if (smtp_port_raw) payload.smtp_port = Number(smtp_port_raw);
+        if (imap_host) payload.imap_host = imap_host;
+        if (imap_port_raw) payload.imap_port = Number(imap_port_raw);
+
+        const response = await apiFetch('/api/integrations/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.detail || data.error || 'Could not save email');
+        if (nodes.emailStatus) nodes.emailStatus.textContent = `Connected: ${address}`;
+        notifyIntegration(scope, 'Email connected');
+        loadIntegrations();
+      } catch (e) {
+        if (nodes.emailStatus) nodes.emailStatus.textContent = e.message || 'Could not save email';
+        notifyIntegration(scope, e.message || 'Could not save email');
+      } finally {
+        setButtonBusy(button, false);
+      }
+    }
+
+    async function disconnectEmailIntegration(scope = 'settings') {
+      const nodes = getIntegrationNodes(scope);
+      const button = getIntegrationActionButton(scope, 'disconnectEmail');
+      try {
+        setButtonBusy(button, true, 'Disconnecting...');
+        const response = await apiFetch('/api/integrations/email', { method: 'DELETE' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.detail || data.error || 'Could not disconnect email');
+        if (nodes.emailStatus) nodes.emailStatus.textContent = 'Email not connected.';
+        notifyIntegration(scope, 'Email disconnected');
+        loadIntegrations();
+      } catch (e) {
+        if (nodes.emailStatus) nodes.emailStatus.textContent = e.message || 'Could not disconnect email';
+        notifyIntegration(scope, e.message || 'Could not disconnect email');
+      } finally {
+        setButtonBusy(button, false);
+      }
+    }
+
+    async function startWhatsAppIntegration(scope = 'settings') {
+      const nodes = getIntegrationNodes(scope);
+      const button = getIntegrationActionButton(scope, 'startWhatsApp');
+      try {
+        setButtonBusy(button, true, 'Starting...');
+        if (nodes.whatsappStatus) nodes.whatsappStatus.textContent = 'Starting WhatsApp pairing...';
+        notifyIntegration(scope, 'Preparing WhatsApp pairing...');
+        const data = await apiFetch('/api/integrations/whatsapp/start', { method: 'POST' }).then(r => r.json());
+        if (!data.ok) throw new Error(data.error || 'Could not start WhatsApp pairing');
+        renderIntegrations({ email: {}, whatsapp: data });
+        if (!data.ready) {
+          startWhatsAppPolling();
+          notifyIntegration(scope, data.qr ? 'QR ready to scan' : 'Starting WhatsApp Web...');
+        } else {
+          notifyIntegration(scope, 'WhatsApp connected');
+        }
+      } catch (e) {
+        if (nodes.whatsappStatus) nodes.whatsappStatus.textContent = e.message || 'Could not start WhatsApp';
+        notifyIntegration(scope, e.message || 'Could not start WhatsApp');
+      } finally {
+        setButtonBusy(button, false);
+      }
+    }
+
+    async function refreshWhatsAppIntegration(scope = 'settings') {
+      const nodes = getIntegrationNodes(scope);
+      const button = getIntegrationActionButton(scope, 'refreshWhatsApp');
+      try {
+        setButtonBusy(button, true, 'Refreshing...');
+        const data = await apiFetch('/api/integrations/whatsapp/status').then(r => r.json());
+        renderIntegrations({ email: {}, whatsapp: data });
+        notifyIntegration(scope, data.ready ? 'WhatsApp connected' : 'WhatsApp refreshed');
+      } catch (e) {
+        if (nodes.whatsappStatus) nodes.whatsappStatus.textContent = e.message || 'Could not refresh WhatsApp';
+        notifyIntegration(scope, e.message || 'Could not refresh WhatsApp');
+      } finally {
+        setButtonBusy(button, false);
+      }
+    }
+
+    async function disconnectWhatsAppIntegration(scope = 'settings') {
+      const nodes = getIntegrationNodes(scope);
+      const button = getIntegrationActionButton(scope, 'disconnectWhatsApp');
+      try {
+        setButtonBusy(button, true, 'Disconnecting...');
+        const data = await apiFetch('/api/integrations/whatsapp', { method: 'DELETE' }).then(r => r.json());
+        if (!data.ok) throw new Error(data.error || 'Could not disconnect WhatsApp');
+        clearInterval(_whatsAppPollTimer);
+        if (nodes.whatsappStatus) nodes.whatsappStatus.textContent = 'WhatsApp not connected.';
+        notifyIntegration(scope, 'WhatsApp disconnected');
+        loadIntegrations();
+      } catch (e) {
+        if (nodes.whatsappStatus) nodes.whatsappStatus.textContent = e.message || 'Could not disconnect WhatsApp';
+        notifyIntegration(scope, e.message || 'Could not disconnect WhatsApp');
+      } finally {
+        setButtonBusy(button, false);
+      }
+    }
+
+    function openSettings() {
+      const mode = AlfredShortcuts.getMode();
+      document.getElementById('voiceToggle').checked = (mode === 'voice');
+      document.getElementById('settingsOverlay').classList.add('open');
+      loadIntegrations();
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsOverlay').classList.remove('open');
+      if (!document.getElementById('onboardingOverlay').classList.contains('open')) {
+        clearInterval(_whatsAppPollTimer);
+      }
+    }
+
+    function closeSettingsOutside(e) {
+      if (e.target === document.getElementById('settingsOverlay')) closeSettings();
+    }
+
+    function selectMode(mode) {
+      AlfredShortcuts.setMode(mode);
+      _updateChip(mode);
+      showSettingsToast(mode === 'voice' ? 'Say "Hey Alfred" to wake Alfred.' : 'Wake shortcut disabled.');
+    }
+
+    let _stTimer;
+    function showSettingsToast(msg) {
+      const el = document.getElementById('settingsToast');
+      el.textContent = msg;
+      clearTimeout(_stTimer);
+      _stTimer = setTimeout(() => el.textContent = '', 3000);
+    }
+
+    let _otTimer;
+    function showOnboardingToast(msg) {
+      const el = document.getElementById('onboardingToast');
+      el.textContent = msg;
+      clearTimeout(_otTimer);
+      _otTimer = setTimeout(() => el.textContent = '', 3000);
+    }
+
+    bindEnterSubmit(
+      [
+        'emailIntegrationAddress',
+        'emailIntegrationPassword',
+        'emailIntegrationSmtpHost',
+        'emailIntegrationSmtpPort',
+        'emailIntegrationImapHost',
+        'emailIntegrationImapPort',
+      ],
+      () => saveEmailIntegration('settings'),
+    );
+    bindEnterSubmit(
+      [
+        'onboardingEmailIntegrationAddress',
+        'onboardingEmailIntegrationPassword',
+        'onboardingEmailIntegrationSmtpHost',
+        'onboardingEmailIntegrationSmtpPort',
+        'onboardingEmailIntegrationImapHost',
+        'onboardingEmailIntegrationImapPort',
+      ],
+      () => saveEmailIntegration('onboarding'),
+    );
+    bindEnterSubmit(['loginEmail', 'loginPass'], attemptLogin);
+    bindEnterSubmit(
+      [
+        'regName',
+        'regEmail',
+        'regPass',
+        'regEmailIntegrationAddress',
+        'regEmailIntegrationPassword',
+      ],
+      attemptRegister,
+    );
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeSettings();
+        closeOnboarding();
+      }
+    });
+  </script>
+  <script>
+/**
+ * Alfred Shortcut Engine  v3
+ * ──────────────────────────
+ * "Hey Alfred" voice wake word only.
+ * Persists via localStorage + cookie-authenticated /shortcuts backend.
+ *
+ * Public API:
+ *   AlfredShortcuts.init()     – restore state + arm listener
+ *   AlfredShortcuts.stop()     – tear down listener
+ *   AlfredShortcuts.test()     – show wake toast (debug)
+ *   AlfredShortcuts.getMode()  – 'off' | 'voice'
+ *   AlfredShortcuts.setMode(m) – change + persist
+ */
+
+const AlfredShortcuts = (() => {
+  /* ── State ──────────────────────────────────────────── */
+  let _mode    = localStorage.getItem('alfred_shortcut_mode') || 'off';
+  let _running = false;
+  let _armed   = false;
+  let _paused  = false;  // true while Alfred TTS is playing — blocks auto-restart
+  let _pauseTimer = null;
+  let _sr        = null;
+  let _srRunning = false;
+
+  let _toast = null;
+
+  /* ── Toast ──────────────────────────────────────────── */
+  function _ensureToast() {
+    if (document.getElementById('alfred-wake-toast')) {
+      _toast = document.getElementById('alfred-wake-toast'); return;
+    }
+    const t = document.createElement('div');
+    t.id = 'alfred-wake-toast';
+    t.innerHTML = `<div class="awt-inner"><div class="awt-dot"></div><span class="awt-label">Alfred is listening…</span></div>`;
+    const s = document.createElement('style');
+    s.textContent = `
+      #alfred-wake-toast{
+        position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);
+        background:hsl(240,28%,10%);color:#fff;
+        padding:12px 22px;border-radius:40px;display:flex;align-items:center;
+        box-shadow:0 8px 32px hsla(248,60%,20%,0.5);
+        opacity:0;z-index:99999;pointer-events:none;
+        transition:opacity 0.3s cubic-bezier(0.16,1,0.3,1),
+                   transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+        font-family:'Geist',system-ui,sans-serif;font-size:13px;letter-spacing:0.2px;
+        border:0.5px solid rgba(255,255,255,0.08);
+      }
+      #alfred-wake-toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+      .awt-inner{display:flex;align-items:center;gap:10px}
+      .awt-dot{
+        width:8px;height:8px;border-radius:50%;
+        background:hsl(221,90%,60%);flex-shrink:0;
+        animation:awtPulse 1s ease-in-out infinite;
+      }
+      @keyframes awtPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.6)}}
+    `;
+    document.head.appendChild(s);
+    document.body.appendChild(t);
+    _toast = t;
+  }
+
+  function _showToast(msg = 'Alfred is listening…', duration = 2200) {
+    _ensureToast();
+    _toast.querySelector('.awt-label').textContent = msg;
+    _toast.classList.add('visible');
+    clearTimeout(_toast._hideTimer);
+    _toast._hideTimer = setTimeout(() => _toast.classList.remove('visible'), duration);
+  }
+
+  /* ── Chip (dashboard nav) ───────────────────────────── */
+  function _refreshChip() {
+    const chip  = document.getElementById('shortcutChip');
+    const label = document.getElementById('shortcutChipLabel');
+    if (!chip || !label) return;
+    label.textContent = _mode === 'voice' ? '🎙 Hey Alfred' : 'Shortcuts off';
+    chip.classList.toggle('active', _mode === 'voice');
+    
+    // Toggle a 'listening' class if actually armed and mic is running
+    const isListening = _srRunning && _running && !_paused;
+    chip.classList.toggle('listening', isListening);
+  }
+
+  /* ── Wake Action ────────────────────────────────────── */
+  function _wake() {
+    console.log('[Alfred] Wake word detected');
+    _showToast('Alfred is listening…', 2500);
+    if (window.location.pathname === '/chat-ui') {
+      if (typeof toggleMic === 'function') setTimeout(toggleMic, 400);
+    } else {
+      sessionStorage.setItem('alfred_auto_listen', '1');
+      setTimeout(() => { window.location.href = '/chat-ui'; }, 500);
+    }
+  }
+
+  /* ── Voice listener ─────────────────────────────────── */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function _startVoice() {
+    if (!SR || _srRunning) return;
+    try {
+      _sr = new SR();
+      _sr.continuous     = true;
+      _sr.interimResults = true;
+      _sr.lang           = 'en-IN';
+
+      _sr.onstart  = () => { _srRunning = true; _refreshChip(); };
+      _sr.onend    = () => {
+        _srRunning = false;
+        _refreshChip();
+        // Only auto-restart if we're still active and NOT paused for TTS
+        if (_running && !_paused && _mode === 'voice') setTimeout(_startVoice, 400);
+      };
+      _sr.onerror  = (e) => {
+        _srRunning = false;
+        _refreshChip();
+        console.warn('[Alfred] SR Error:', e.error);
+        if (e.error !== 'aborted' && e.error !== 'not-allowed' && _running) setTimeout(_startVoice, 1500);
+      };
+      _sr.onresult = (e) => {
+        const transcript = Array.from(e.results)
+          .map(r => r[0].transcript.toLowerCase()).join(' ');
+        
+        // Match 'hey alfred' with optional comma/space
+        if (/hey[,\s]*alfred/i.test(transcript)) {
+          console.log('[Alfred] Wake pattern matched:', transcript);
+          _paused = true;   // block onend auto-restart
+          _sr.abort();      // close mic now
+          _wake();
+        }
+      };
+      _sr.start();
+    } catch (err) {
+      console.warn('[Alfred] SpeechRecognition error:', err);
+    }
+  }
+
+  function _stopVoice() {
+    _srRunning = false;
+    if (_sr) { try { _sr.abort(); } catch(_) {} _sr = null; }
+  }
+
+  /* ── Gesture gate ───────────────────────────────────── */
+  function _startListeners() {
+    if (_armed || _mode === 'off') return;
+    _armed   = true;
+    _running = true;
+    _startVoice();
+  }
+
+  function _attachGestureGate() {
+    if (_mode === 'off') return;
+    const handler = () => {
+      document.removeEventListener('click',   handler);
+      document.removeEventListener('keydown', handler);
+      _startListeners();
+    };
+    document.addEventListener('click',   handler, { passive: true });
+    document.addEventListener('keydown', handler, { passive: true });
+  }
+
+  /* ── Persist ────────────────────────────────────────── */
+  function _persist(mode) {
+    localStorage.setItem('alfred_shortcut_mode', mode);
+    fetch('/shortcuts', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body:    JSON.stringify({ mode, threshold: 0.035 })
+    }).catch(() => {});
+  }
+
+  /* ── Public API ─────────────────────────────────────── */
+  function init() {
+    _refreshChip();
+    _attachGestureGate();
+
+    // Background sync from backend
+    fetch('/shortcuts', { credentials: 'same-origin' }).then(r => r.json()).then(data => {
+      if (data.mode && data.mode !== _mode) {
+        _mode = (data.mode === 'voice') ? 'voice' : 'off';
+        localStorage.setItem('alfred_shortcut_mode', _mode);
+        _refreshChip();
+        if (_armed) stop(); 
+        _attachGestureGate();
+      }
+    }).catch(() => {});
+
+    // Auto-listen after wake-navigate
+    if (sessionStorage.getItem('alfred_auto_listen') === '1') {
+      sessionStorage.removeItem('alfred_auto_listen');
+      setTimeout(() => { if (typeof toggleMic === 'function') toggleMic(); }, 800);
+    }
+  }
+
+  function stop() {
+    _running = false;
+    _armed   = false;
+    _stopVoice();
+  }
+
+  function setMode(mode) {
+    const m  = (mode === 'voice') ? 'voice' : 'off';
+    _mode    = m;
+    _armed   = false;
+    _running = false;
+    _stopVoice();
+    _persist(m);
+    _refreshChip();
+    if (m === 'voice') {
+      // User just clicked — that IS the gesture, start immediately
+      _armed   = true;
+      _running = true;
+      _startVoice();
+    }
+  }
+
+  function getMode() { return _mode; }
+
+  /**
+   * Hard-stop the mic immediately — call this BEFORE speechSynthesis.speak().
+   * The auto-restart in _sr.onend is blocked by _paused=true.
+   */
+  function pauseForSpeech(estimatedMs = 4000) {
+    _paused = true;
+    clearTimeout(_pauseTimer);
+    // Abort the active SR session — mic goes silent immediately
+    if (_sr) { try { _sr.abort(); } catch(_) {} }
+    // Safety fallback: if onend never fires the resume, do it automatically
+    _pauseTimer = setTimeout(resumeAfterSpeech, estimatedMs + 2000);
+  }
+
+  /**
+   * Re-open the mic. Call this from u.onend / u.onerror with a small delay.
+   */
+  function resumeAfterSpeech() {
+    clearTimeout(_pauseTimer);
+    _paused = false;
+    if (_running && _mode === 'voice') setTimeout(_startVoice, 300);
+  }
+
+  /**
+   * Call this after a conversation ends and voice output is disabled,
+   * so the wake SR restarts even without a speak() → resumeAfterSpeech() cycle.
+   */
+  function resumeFromWake(delayMs = 800) {
+    clearTimeout(_pauseTimer);
+    _paused = false;
+    if (_running && _mode === 'voice') setTimeout(_startVoice, delayMs);
+  }
+
+  function test() {
+    _showToast('Alfred is listening…', 2500);
+    _ensureToast();
+    const dot = _toast.querySelector('.awt-dot');
+    if (dot) { dot.style.background = 'hsl(142,71%,42%)'; setTimeout(() => dot.style.background = '', 1000); }
+  }
+
+  function isListening() { return _srRunning && _running && !_paused; }
+
+  window.AlfredShortcuts = { init, stop, setMode, getMode, pauseForSpeech, resumeAfterSpeech, resumeFromWake, test, isListening };
+  return window.AlfredShortcuts;
+})();
+
+</script>
+  <script>
+    /* ── Interactive Effects ── */
+    function initInteractions() {
+      if (prefersReducedMotion) return;
+
+      // Magnetic buttons
+      document.querySelectorAll('.btn, #themeBtn, .brand-mark').forEach(btn => {
+        btn.addEventListener('mousemove', e => {
+          const r = btn.getBoundingClientRect();
+          const x = e.clientX - r.left - r.width / 2;
+          const y = e.clientY - r.top - r.height / 2;
+          btn.style.transform = `translate3d(${x * 0.25}px, ${y * 0.25}px, 0) scale(1.04)`;
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = '';
+        });
+      });
+
+      // 3D Card Tilt
+      document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('mousemove', e => {
+          const r = card.getBoundingClientRect();
+          const x = e.clientX - r.left;
+          const y = e.clientY - r.top;
+          const xc = r.width / 2;
+          const yc = r.height / 2;
+          const dx = x - xc;
+          const dy = y - yc;
+          
+          card.style.setProperty('--mx', `${x}px`);
+          card.style.setProperty('--my', `${y}px`);
+          card.style.transform = `perspective(1000px) rotateY(${dx / 25}deg) rotateX(${-dy / 25}deg) translate3d(0, -4px, 10px)`;
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = '';
+        });
+      });
+    }
+
+    AlfredShortcuts.init();
+    _updateChip(AlfredShortcuts.getMode());
+    bootstrapSession();
+    initInteractions();
+
+    // ── Cold Email Agent (Premium) ─────────────────────────────────────────
+    async function checkPremiumStatus() {
+      try {
+        const r = await apiFetch('/api/premium/status');
+        const data = await r.json();
+        if (data.is_premium) {
+          document.getElementById('coldEmailSection').style.display = 'block';
+          loadColdEmailConfig();
+          loadColdEmailStats();
+        }
+      } catch (_) {}
+    }
+
+    async function loadColdEmailConfig() {
+      try {
+        const r = await apiFetch('/api/cold-email/config');
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('ceNameInput').value      = d.sender_name    || '';
+        document.getElementById('ceRoleInput').value      = d.sender_role    || '';
+        document.getElementById('ceEmailInput').value     = d.sender_email   || '';
+        document.getElementById('ceCompanyInput').value   = d.company_name   || '';
+        document.getElementById('ceValuePropInput').value = d.value_prop     || '';
+        if (d.has_password) {
+          document.getElementById('cePasswordInput').placeholder = '••••••••••••••• (saved)';
+        }
+        document.getElementById('ceConfigStatus').textContent = d.sender_email ? `Configured: ${d.sender_email}` : '';
+      } catch (_) {}
+    }
+
+    async function saveColdEmailConfig() {
+      const btn = event.currentTarget;
+      btn.textContent = 'Saving…';
+      btn.disabled = true;
+      const payload = {
+        sender_name:        document.getElementById('ceNameInput').value.trim(),
+        sender_role:        document.getElementById('ceRoleInput').value.trim(),
+        sender_email:       document.getElementById('ceEmailInput').value.trim(),
+        gmail_app_password: document.getElementById('cePasswordInput').value.trim(),
+        company_name:       document.getElementById('ceCompanyInput').value.trim(),
+        value_prop:         document.getElementById('ceValuePropInput').value.trim(),
+      };
+      try {
+        const r = await apiFetch('/api/cold-email/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const d = await r.json();
+        document.getElementById('ceConfigStatus').textContent = d.ok ? '✓ Config saved' : (d.detail || 'Error');
+      } catch (e) {
+        document.getElementById('ceConfigStatus').textContent = 'Error saving config.';
+      } finally {
+        btn.textContent = 'Save Config';
+        btn.disabled = false;
+      }
+    }
+
+    async function runColdEmailCampaign() {
+      const fileInput = document.getElementById('ceLeadsFile');
+      if (!fileInput.files.length) {
+        document.getElementById('ceCampaignStatus').textContent = 'Please select a CSV file first.';
+        return;
+      }
+      const btn = event.currentTarget;
+      btn.textContent = '⏳ Sending…';
+      btn.disabled = true;
+      document.getElementById('ceCampaignStatus').textContent = 'Running campaign — do not close this tab…';
+
+      const fd = new FormData();
+      fd.append('file', fileInput.files[0]);
+      try {
+        const r = await apiFetch('/api/cold-email/campaign', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!r.ok) {
+          document.getElementById('ceCampaignStatus').textContent = d.detail || 'Campaign failed.';
+        } else {
+          let msg = `✅ Sent: ${d.sent}  ⏭ Skipped: ${d.skipped}  ❌ Failed: ${d.failed}`;
+          if (d.errors && d.errors.length) msg += '\n' + d.errors.slice(0,3).join('\n');
+          document.getElementById('ceCampaignStatus').textContent = msg;
+          loadColdEmailStats();
+        }
+      } catch (e) {
+        document.getElementById('ceCampaignStatus').textContent = 'Error running campaign.';
+      } finally {
+        btn.textContent = '🚀 Launch Campaign';
+        btn.disabled = false;
+      }
+    }
+
+    async function loadColdEmailStats() {
+      try {
+        const r = await apiFetch('/api/cold-email/stats');
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('ceStat-sent').textContent    = d.sent    ?? '0';
+        document.getElementById('ceStat-replied').textContent = d.replied ?? '0';
+        document.getElementById('ceStat-rate').textContent    = d.reply_rate != null ? d.reply_rate + '%' : '0%';
+        document.getElementById('ceStat-failed').textContent  = d.failed  ?? '0';
+      } catch (_) {}
+    }
+
+    function _ceStatusColor(status) {
+      if (status === 'replied') return 'var(--green)';
+      if (status === 'failed')  return 'var(--red)';
+      return 'var(--text-2)';
+    }
+
+    async function loadColdEmailHistory() {
+      const wrap = document.getElementById('ceHistoryList');
+      wrap.innerHTML = '<div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">Loading…</div>';
+      try {
+        const r = await apiFetch('/api/cold-email/history');
+        if (!r.ok) { wrap.innerHTML = ''; return; }
+        const rows = await r.json();
+        if (!rows.length) { wrap.innerHTML = '<div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">No emails sent yet.</div>'; return; }
+        wrap.innerHTML = rows.map(row => `
+          <div style="padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.03);border:0.5px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;font-weight:600;color:var(--text)">${escapeHtml(row.name || row.email)}</span>
+              <span style="font-size:10px;color:${_ceStatusColor(row.status)};font-family:var(--font-mono)">${row.status}</span>
+            </div>
+            <div style="font-size:10px;color:var(--text-2);font-family:var(--font-mono);margin-top:2px">${escapeHtml(row.subject || '')}</div>
+          </div>`).join('');
+      } catch (_) { wrap.innerHTML = ''; }
+    }
+
+    async function loadColdEmailReplies() {
+      const wrap = document.getElementById('ceRepliesList');
+      wrap.innerHTML = '<div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">Loading…</div>';
+      try {
+        const r = await apiFetch('/api/cold-email/replies');
+        if (!r.ok) { wrap.innerHTML = ''; return; }
+        const rows = await r.json();
+        if (!rows.length) { wrap.innerHTML = '<div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">No replies yet.</div>'; return; }
+        wrap.innerHTML = rows.map(row => `
+          <div style="padding:8px 10px;border-radius:8px;background:rgba(52,199,89,.06);border:0.5px solid rgba(52,199,89,.2)">
+            <div style="font-size:11px;font-weight:600;color:var(--text)">${escapeHtml(row.name || row.from_email)}</div>
+            <div style="font-size:10px;color:var(--text-2);font-family:var(--font-mono);margin-top:2px">${escapeHtml(row.subject || '')}</div>
+            ${row.snippet ? `<div style="font-size:10px;color:var(--text-3);font-family:var(--font-mono);margin-top:4px;font-style:italic">"${escapeHtml(row.snippet.slice(0,80))}…"</div>` : ''}
+          </div>`).join('');
+      } catch (_) { wrap.innerHTML = ''; }
+    }
+
+    async function checkColdEmailReplies() {
+      const btn = event.currentTarget;
+      btn.textContent = '⏳';
+      btn.disabled = true;
+      try {
+        const r = await apiFetch('/api/cold-email/check-replies', { method: 'POST' });
+        const d = await r.json();
+        const n = d.new_replies ?? 0;
+        showSettingsToast(n ? `📬 ${n} new repl${n === 1 ? 'y' : 'ies'}!` : 'No new replies.');
+        if (n) { loadColdEmailReplies(); loadColdEmailStats(); }
+      } catch (_) {
+        showSettingsToast('Could not check inbox.');
+      } finally {
+        btn.textContent = 'Check Inbox';
+        btn.disabled = false;
+      }
+    }
+
+    // Run premium check when settings open
+    const _origOpenSettings = window.openSettings;
+    window.openSettings = function(...args) {
+      if (_origOpenSettings) _origOpenSettings(...args);
+      checkPremiumStatus();
+    };
+    // Also run on load in case settings drawer is already visible
+    checkPremiumStatus();
+  </script>
+
+  <!-- Toast -->
+  <div id="alfredToast"></div>
+
+  <!-- Keyboard hint -->
+  <div
+    style="position:fixed;bottom:20px;right:20px;font-size:10px;font-family:var(--font-mono);color:var(--text-3);display:flex;flex-direction:column;align-items:flex-end;gap:3px;pointer-events:none;opacity:0.55">
+    <div><kbd
+        style="background:rgba(0,0,0,0.07);border:0.5px solid rgba(0,0,0,0.12);border-radius:4px;padding:1px 5px;font-family:inherit">/</kbd>
+      task</div>
+    <div><kbd
+        style="background:rgba(0,0,0,0.07);border:0.5px solid rgba(0,0,0,0.12);border-radius:4px;padding:1px 5px;font-family:inherit">n</kbd>
+      note</div>
+    <div><kbd
+        style="background:rgba(0,0,0,0.07);border:0.5px solid rgba(0,0,0,0.12);border-radius:4px;padding:1px 5px;font-family:inherit">space</kbd>
+      timer</div>
+  </div>
+  
+
+</body>
+
+</html>
