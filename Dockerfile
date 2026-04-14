@@ -17,4 +17,4 @@ EXPOSE 8080
 
 # Using proxy-headers and forwarded-allow-ips to handle Railway's HTTPS proxy correctly.
 # This prevents CSRF/Login issues on mobile devices.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips='*'"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips=*"]
