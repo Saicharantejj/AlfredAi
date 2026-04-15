@@ -278,6 +278,8 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
     now = datetime.now()
     time_context = "Current date and time: " + now.strftime("%A, %d %B %Y, %I:%M %p")
 
+    client = get_groq_client()  # Initialize Groq client for this request
+
     memory_context = await get_memory_context_async(user_id)
     system = SYSTEM_PROMPT.replace(
         "__PREMIUM_COLD_EMAIL_PLACEHOLDER__",
@@ -299,6 +301,7 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
 
     raw_last_msg = messages[-1]["content"].strip() if messages else ""
     last_msg = raw_last_msg.lower()
+
 
     # Direct screen capture bypass
     if any(word in last_msg for word in ["screen", "what do you see", "what am i looking at", "whats on my screen", "analyze my screen", "read my screen", "what is this", "explain this error"]):
