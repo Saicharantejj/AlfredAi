@@ -2370,7 +2370,19 @@
       <div class="welcome-glow-3"></div>
       <div class="welcome-content">
         <div class="welcome-greeting" id="welcomeGreeting">Good morning</div>
-        <div class="welcome-name" id="welcomeName">User.</div>
+        <div class="welcome-name" id="welcomeName">&nbsp;</div>
+        <script>
+          (function() {
+            const u = localStorage.getItem('alfred_user');
+            if (u) {
+              const el = document.getElementById('welcomeName');
+              const name = u.split(' ')[0] + '.';
+              el.textContent = name;
+              // Add a hint to the main script to skip the reveal if already hydrated
+              el._hydrated = name;
+            }
+          })();
+        </script>
         <div class="welcome-sub" id="welcomeSub">Here's what's happening today.</div>
       </div>
       <div class="welcome-time" id="welcomeTime">--:--</div>
@@ -3149,7 +3161,7 @@
       document.getElementById('loginOverlay').classList.remove('open');
       const firstName = (name || 'Alfred').split(' ')[0];
       const welcomeName = document.getElementById('welcomeName');
-      if (welcomeName) setTimeout(() => typewriter(welcomeName, firstName + '.'), 250);
+      if (welcomeName) typewriter(welcomeName, firstName + '.');
       try {
         refreshAll();
       } catch (error) {
@@ -3492,10 +3504,13 @@
     if (alfredUser) {
       apiFetch('/memory').then(r => r.json()).then(d => {
         const name = (d.name || alfredUser || '').split(' ')[0];
-        if (name) setTimeout(() => typewriter(document.getElementById('welcomeName'), name + '.'), 800);
+        const el = document.getElementById('welcomeName');
+        if (name && el && el._hydrated !== name + '.') {
+          typewriter(el, name + '.');
+        }
       }).catch(() => { });
     } else {
-      setTimeout(() => typewriter(document.getElementById('welcomeName'), 'Alfred.'), 800);
+      typewriter(document.getElementById('welcomeName'), 'Alfred.');
     }
 
     /* ═══════════════════════════════════════════════
