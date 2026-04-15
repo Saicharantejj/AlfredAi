@@ -117,47 +117,62 @@ def parse_tag(reply, tag):
         return clean_reply, None
 
 
-def web_search(query):
+def web_search(query, engine="free"):
     try:
-        import requests
-        from bs4 import BeautifulSoup
-        import urllib.parse
-        
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'}
-        url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
-        resp = requests.post(url, headers=headers, data={'q': query}, timeout=10)
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        
         results = []
         top_link = None
-        for a in soup.find_all('a', class_='result__snippet')[:6]:
-            results.append(f"- {a.text}")
-            
+        
+        # Use Tavily if requested or if it's a high-quality lookup
+        if engine == "tavily" or (os.getenv("TAVILY_API_KEY") and engine == "free"):
+            try:
+                from tavily import TavilyClient
+                tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+                search_res = tavily.search(query=query, search_depth="basic", max_results=5)
+                for r in search_res.get('results', []):
+                    results.append(f"- {r['title']}: {r['content'][:200]}")
+                    if not top_link:
+                        top_link = r['url']
+            except Exception as te:
+                print(f"Tavily error: {te}")
+                # Fallback to DDGS if Tavily fails
+                engine = "free"
+
+        if engine == "free" and not results:
+            try:
+                from ddgs import DDGS
+                with DDGS() as ddgs:
+                    ddgs_gen = ddgs.text(query, max_results=6)
+                    for r in ddgs_gen:
+                        results.append(f"- {r['title']}: {r['body']}")
+                        if not top_link:
+                            # Avoid DuckDuckGo ad/redirect links
+                            if "duckduckgo.com/y.js" not in r['href']:
+                                top_link = r['href']
+            except Exception as de:
+                print(f"DDGS error: {de}")
+
+        # Add Google News RSS as secondary context
         try:
+            import requests
+            from bs4 import BeautifulSoup
+            import urllib.parse
             news_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-IN&gl=IN&ceid=IN:en"
             news_resp = requests.get(news_url, timeout=5)
             nsoup = BeautifulSoup(news_resp.content, 'xml')
-            for item in nsoup.find_all('item')[:4]:
+            for item in nsoup.find_all('item')[:3]:
                 results.append(f"- LATEST NEWS: {item.title.text}")
         except Exception:
             pass
 
-        for result in soup.find_all('a', class_='result__url'):
-            if 'http' in result.get('href', ''):
-                from urllib.parse import unquote
-                link = result.get('href')
-                if 'uddg=' in link:
-                    link = unquote(link.split('uddg=')[1].split('&')[0])
-                top_link = link
-                break
-                
         if not results:
             return "No results found."
 
-        final_text = chr(10).join(results)
+        final_text = "\n".join(results)
         
+        # Fetch deep context from top result using Jina
         if top_link:
             try:
+                import requests
                 jina_resp = requests.get(f"https://r.jina.ai/{top_link}", timeout=8)
                 if jina_resp.ok:
                     final_text += f"\n\nContext from top result ({top_link}):\n{jina_resp.text[:1500]}"
@@ -168,6 +183,7 @@ def web_search(query):
     except Exception as e:
         print("Web search error: " + str(e))
         return "Could not search the web."
+
 
 
 def open_app(app_name):
