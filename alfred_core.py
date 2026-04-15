@@ -779,22 +779,24 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
                     wa_number,
                     wa_body,
                 )
+                print(f"WhatsApp send result: sent={sent}, message={message!r}")
                 if not sent:
                     err = message or ""
                     is_crash = any(x in err.lower() for x in ["detached frame", "context", "503", "connection lost", "crash"])
                     if is_crash:
                         clean_reply += "\n\nWhatsApp connection dropped. I'm automatically attempting to restart the engine—please wait 10 seconds and try your request again."
                     else:
-                        clean_reply += "\n\n(" + err + ")"
+                        # Show the real error so the user knows what went wrong
+                        clean_reply += "\n\n(WhatsApp: " + (err or "message could not be sent.") + ")"
                 else:
                     print("WhatsApp result: " + message)
             except Exception as e:
                 err = str(e)
-                print("WhatsApp error: " + err)
+                print("WhatsApp exception: " + err)
                 if "detached Frame" in err or "context" in err.lower() or "503" in err:
-                    clean_reply += "\n\nWhatsApp connection dropped. Go to Settings → WhatsApp and hit Refresh to reconnect, then try again."
+                    clean_reply += "\n\nWhatsApp connection dropped. I'm automatically attempting to restart the engine—please wait 10 seconds and try your request again."
                 else:
-                    clean_reply += "\n\n(WhatsApp message could not be sent.)"
+                    clean_reply += "\n\n(WhatsApp error: " + err + ")"
 
     clean_reply, email_data = parse_tag(clean_reply, "EMAIL_SEND")
     if email_data:

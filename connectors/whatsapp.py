@@ -627,7 +627,12 @@ class WhatsAppConnector(BaseConnector):
             if response.status_code < 400:
                 return True, f"Message sent to {recipient_hint}."
 
-            last_error = self._extract_bridge_error(response, last_error)
+            extracted = self._extract_bridge_error(response, "")
+            logger.error(
+                "WA send failed (attempt %d) — status=%d target=%s extracted=%r body=%r",
+                attempt + 1, response.status_code, target, extracted, response.text[:300],
+            )
+            last_error = extracted or last_error
             if response.status_code == 409 and attempt + 1 < SEND_RETRIES:
                 ready, ready_error, _ = self.ensure_ready(session_id, wait_seconds=4)
                 if not ready:
