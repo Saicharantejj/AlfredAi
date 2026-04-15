@@ -133,16 +133,18 @@
 
     /* ── Deeper Red Wash ────────────────────────────────────────────────── */
     .deep-red-wash {
-      position: fixed; inset: 0;
+      position: fixed;
+      inset: 0;
       background:
-        linear-gradient(180deg, rgba(80,0,0,0.3) 0%, rgba(20,0,0,0.1) 40%, transparent 80%),
-        linear-gradient(0deg, rgba(40,0,0,0.2) 0%, transparent 60%);
+        linear-gradient(180deg, rgba(80, 0, 0, 0.3) 0%, rgba(20, 0, 0, 0.1) 40%, transparent 80%),
+        linear-gradient(0deg, rgba(40, 0, 0, 0.2) 0%, transparent 60%);
       pointer-events: none;
       z-index: -2;
     }
 
     .dot-grid-bg {
-      position: fixed; inset: 0;
+      position: fixed;
+      inset: 0;
       z-index: -3;
       background-image: radial-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px);
       background-size: 32px 32px;
@@ -282,14 +284,35 @@
         --shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
         --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.2);
       }
-      .top { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-      .card { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-      .orb { display: none !important; } /* Hide heavy orbs on mobile */
-      .spline-bg { display: none !important; }
+
+      .top {
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .card {
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .orb {
+        display: none !important;
+      }
+
+      /* Hide heavy orbs on mobile */
+      .spline-bg {
+        display: none !important;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .orb, .gravity-blob, .welcome-name { animation: none !important; transition: none !important; }
+
+      .orb,
+      .gravity-blob,
+      .welcome-name {
+        animation: none !important;
+        transition: none !important;
+      }
     }
 
     [data-theme="dark"] .top {
@@ -2119,6 +2142,7 @@
     .mobile-app-nav {
       display: none;
     }
+
     @media (max-width: 768px) {
       .mobile-app-nav {
         display: flex;
@@ -2127,14 +2151,15 @@
         left: 0;
         right: 0;
         height: 64px;
-        background: rgba(10,10,10,0.85);
+        background: rgba(10, 10, 10, 0.85);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-top: 1px solid var(--border);
         z-index: 9999;
         padding-bottom: env(safe-area-inset-bottom);
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
       }
+
       .mobile-nav-item {
         flex: 1;
         display: flex;
@@ -2149,21 +2174,27 @@
         gap: 4px;
         transition: color 0.3s;
       }
+
       .mobile-nav-item.active {
         color: var(--accent);
       }
+
       .mobile-nav-item svg {
         width: 22px;
         height: 22px;
         opacity: 0.8;
       }
+
       .mobile-nav-item.active svg {
         opacity: 1;
       }
+
       /* Hide redundant top right buttons */
-      .top-right .btn-dark, .top-right .btn-light {
+      .top-right .btn-dark,
+      .top-right .btn-light {
         display: none !important;
       }
+
       body {
         /* Ensure content is not hidden behind tab bar */
         padding-bottom: 76px !important;
@@ -2171,31 +2202,41 @@
     }
 
     @media (max-width: 600px) {
-      .grid, .row-3, .row-main {
+
+      .grid,
+      .row-3,
+      .row-main {
         grid-template-columns: 1fr;
         gap: 12px;
       }
+
       .wrap {
         padding: 12px;
       }
+
       .card {
         padding: 20px 16px;
       }
+
       .welcome-content h1 {
         font-size: 26px;
         line-height: 1.1;
       }
+
       .w-temp {
         font-size: 48px;
       }
+
       .login-modal {
         width: min(360px, calc(100vw - 32px));
         padding: 32px 24px;
       }
+
       .onboarding-modal {
         width: min(560px, calc(100vw - 24px));
         padding: 24px 20px;
       }
+
       .metric-value {
         font-size: 18px;
       }
@@ -2349,6 +2390,8 @@
     .login-modal .btn-light {
       border-color: rgba(255, 255, 255, 0.15);
       color: #ffffff;
+    }
+
     /* Auth setup box inside login modal */
     .auth-setup-box {
       border-color: rgba(255, 255, 255, 0.08) !important;
@@ -2427,7 +2470,7 @@
         <div class="welcome-greeting" id="welcomeGreeting">Good morning</div>
         <div class="welcome-name" id="welcomeName">&nbsp;</div>
         <script>
-          (function() {
+          (function () {
             const u = localStorage.getItem('alfred_user');
             if (u) {
               const el = document.getElementById('welcomeName');
@@ -3024,7 +3067,13 @@
   <!-- ── Mobile App Navigation Tab Bar ── -->
   <nav class="mobile-app-nav">
     <a href="/dashboard" class="mobile-nav-item active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="9"></rect>
+        <rect x="14" y="3" width="7" height="5"></rect>
+        <rect x="14" y="12" width="7" height="9"></rect>
+        <rect x="3" y="16" width="7" height="5"></rect>
+      </svg>
       <span>Dashboard</span>
     </a>
     <a href="/chat-ui" class="mobile-nav-item">
@@ -3559,11 +3608,11 @@
       if (el._typewriterId) clearTimeout(el._typewriterId);
       el.textContent = '';
       let i = 0;
-      const tick = () => { 
-        if (i < text.length) { 
-          el.textContent += text[i++]; 
-          el._typewriterId = setTimeout(tick, speed); 
-        } 
+      const tick = () => {
+        if (i < text.length) {
+          el.textContent += text[i++];
+          el._typewriterId = setTimeout(tick, speed);
+        }
       };
       tick();
     }
@@ -5134,7 +5183,7 @@
   <div id="focusOverlay">
     <div class="focus-task-label">Current Focus</div>
     <div class="focus-task-text" id="focusTaskText">Deep work</div>
-    
+
     <div class="focus-timer">
       <input type="number" id="focusMinsInput" value="25" onchange="window.updateFocusDur(this.value)">
       <span>:</span>
@@ -5243,15 +5292,15 @@
       window._handleInbox = function (a) { window.location.href = "/chat-ui?q=" + encodeponent(a); };
       var _fr = false, _fs = 1500, _ft = 1500, _fi = null;
       function _fd(s) { return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
-      function _fdraw() { 
-        var m = document.getElementById("focusMinsInput"); 
+      function _fdraw() {
+        var m = document.getElementById("focusMinsInput");
         var s = document.getElementById("focusSecsDisplay");
-        var b = document.getElementById("focusProgressBar"); 
+        var b = document.getElementById("focusProgressBar");
         if (m) m.value = Math.floor(_fs / 60);
         if (s) s.textContent = String(_fs % 60).padStart(2, "0");
-        if (b) b.style.width = ((_fs / _ft) * 100) + "%"; 
+        if (b) b.style.width = ((_fs / _ft) * 100) + "%";
       }
-      window.updateFocusDur = function(mins) {
+      window.updateFocusDur = function (mins) {
         if (_fr) return;
         var v = parseInt(mins) || 25;
         if (v < 1) v = 1; if (v > 999) v = 999;
@@ -5263,54 +5312,54 @@
           p.classList.toggle('active', p.textContent === (v + 'm'));
         });
       };
-      window.focusToggle = function () { 
-        var btn = document.getElementById("focusStartBtn"); 
+      window.focusToggle = function () {
+        var btn = document.getElementById("focusStartBtn");
         var minsInp = document.getElementById("focusMinsInput");
         var presets = document.getElementById("focusPresets");
-        if (_fr) { 
-          clearInterval(_fi); _fr = false; 
-          if (btn) btn.textContent = "Resume"; 
+        if (_fr) {
+          clearInterval(_fi); _fr = false;
+          if (btn) btn.textContent = "Resume";
           if (minsInp) minsInp.removeAttribute('disabled');
           if (presets) presets.style.opacity = '1';
           if (presets) presets.style.pointerEvents = 'auto';
-        } else { 
-          _fr = true; 
-          if (btn) btn.textContent = "Pause"; 
+        } else {
+          _fr = true;
+          if (btn) btn.textContent = "Pause";
           if (minsInp) minsInp.setAttribute('disabled', 'true');
           if (presets) presets.style.opacity = '0.3';
           if (presets) presets.style.pointerEvents = 'none';
-          _fi = setInterval(function () { 
-            if (_fs <= 0) { 
-              clearInterval(_fi); _fr = false; 
-              if (btn) btn.textContent = "Done!"; 
+          _fi = setInterval(function () {
+            if (_fs <= 0) {
+              clearInterval(_fi); _fr = false;
+              if (btn) btn.textContent = "Done!";
               if (minsInp) minsInp.removeAttribute('disabled');
-              return; 
-            } 
-            _fs--; _fdraw(); 
-          }, 1000); 
-        } 
+              return;
+            }
+            _fs--; _fdraw();
+          }, 1000);
+        }
       };
-      window.focusEnd = function () { 
-        clearInterval(_fi); _fr = false; _fs = _ft; 
-        document.getElementById("focusOverlay").classList.remove("active"); 
-        var btn = document.getElementById("focusStartBtn"); 
-        if (btn) btn.textContent = "Start"; 
+      window.focusEnd = function () {
+        clearInterval(_fi); _fr = false; _fs = _ft;
+        document.getElementById("focusOverlay").classList.remove("active");
+        var btn = document.getElementById("focusStartBtn");
+        if (btn) btn.textContent = "Start";
         var minsInp = document.getElementById("focusMinsInput");
         if (minsInp) minsInp.removeAttribute('disabled');
         var presets = document.getElementById("focusPresets");
         if (presets) presets.style.opacity = '1';
         if (presets) presets.style.pointerEvents = 'auto';
-        _fdraw(); 
+        _fdraw();
       };
-      window.openFocusMode = function (task, mins) { 
+      window.openFocusMode = function (task, mins) {
         var v = mins || 25;
-        _ft = v * 60; _fs = _ft; _fr = false; clearInterval(_fi); 
-        var el = document.getElementById("focusTaskText"); 
-        if (el) el.textContent = task || "Deep work"; 
-        var btn = document.getElementById("focusStartBtn"); 
-        if (btn) btn.textContent = "Start"; 
+        _ft = v * 60; _fs = _ft; _fr = false; clearInterval(_fi);
+        var el = document.getElementById("focusTaskText");
+        if (el) el.textContent = task || "Deep work";
+        var btn = document.getElementById("focusStartBtn");
+        if (btn) btn.textContent = "Start";
         window.updateFocusDur(v);
-        document.getElementById("focusOverlay").classList.add("active"); 
+        document.getElementById("focusOverlay").classList.add("active");
       };
       document.addEventListener("keydown", function (e) { if (e.key === "Escape") { var o = document.getElementById("focusOverlay"); if (o && o.classList.contains("active")) o.classList.remove("active"); } });
       function injectFocusBtn() { var tr = document.querySelector(".top-right"); if (!tr || document.getElementById("focusTriggerBtn")) return; var b = document.createElement("button"); b.id = "focusTriggerBtn"; b.className = "focus-trigger-btn"; b.innerHTML = "&#9201; Focus"; b.addEventListener("click", function () { var topTask = "Deep work"; var items = document.querySelectorAll(".task-txt,.task-row"); if (items.length) topTask = items[0].textContent.trim().slice(0, 60) || topTask; openFocusMode(topTask, 25); }); tr.insertBefore(b, tr.firstChild); }
