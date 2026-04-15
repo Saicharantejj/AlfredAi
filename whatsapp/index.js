@@ -99,19 +99,20 @@ async function createClient(sessionId = 'default') {
     authStrategy: new LocalAuth({ clientId: session.id }),
     puppeteer: {
       headless: true,
+      // Use the system Chromium installed in the Dockerfile
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
         '--disable-gpu',
+        '--no-first-run',
         '--disable-extensions',
         '--disable-default-apps',
         '--mute-audio',
-        '--hide-scrollbars'
+        '--hide-scrollbars',
+        // NOTE: --single-process is intentionally REMOVED — it causes
+        // 'detached Frame' crashes in Chromium and is not memory-safe.
       ]
     }
   });
@@ -154,12 +155,22 @@ async function createClient(sessionId = 'default') {
     })();
   });
 
+  // Detect page-level disconnects (e.g. browser context destroyed) and auto-recover.
+  client.on('change_state', (state) => {
+    console.log(`🔄 WhatsApp state changed for session ${session.id}: ${state}`);
+    if (state === 'CONFLICT' || state === 'UNLAUNCHED') {
+      console.log(`♻️ Attempting to take over conflicted/unlaunched session ${session.id}...`);
+      client.takeOver().catch((e) => console.warn(`takeOver error: ${e.message}`));
+    }
+  });
+
   client.on('disconnected', (reason) => {
     console.log(`⚠️ WhatsApp disconnected for session ${session.id}:`, reason);
     session.isReady = false;
     session.initializing = false;
     session.lastError = String(reason || 'Disconnected');
     session.client = null;
+    console.log(`🔁 Will attempt to reconnect session ${session.id} in 5s...`);
     setTimeout(() => createClient(session.id), 5000);
   });
 
