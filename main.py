@@ -57,6 +57,7 @@ from security_utils import (
     get_safe_user_path, sanitize_user_id, build_storage_user_id
 )
 from scheduler import schedule_morning_briefing, get_pending_updates, start_followup_scheduler
+from proactive_worker import start_proactive_worker
 import jwt
 import httpx
 import base64
@@ -313,6 +314,57 @@ async def startup_checks():
         logger.info("Follow-up engine started")
     except Exception:
         logger.exception("Could not start follow-up scheduler")
+
+    # ── Run agentic DB migrations (new tables only, idempotent) ──────────────
+    try:
+        from db_schemas import run_migrations
+        await run_migrations()
+        logger.info("Agentic DB migrations applied")
+    except Exception:
+        logger.exception("Could not run agentic DB migrations")
+
+    # ── Initialise memory FTS index ───────────────────────────────────────────
+    try:
+        from memory_retrieval import init_memory_fts
+        await init_memory_fts()
+        logger.info("Memory FTS index ready")
+    except Exception:
+        logger.exception("Could not initialise memory FTS")
+
+    # ── Migrate legacy tasks.json → tasks_v2 for all users ───────────────────
+    try:
+        from task_manager_v2 import migrate_legacy_tasks_async
+        accounts = await load_accounts()
+        for _email, acct in accounts.items():
+            uid = acct.get("storage_id") or acct.get("user_id")
+            if uid:
+                migrated = await migrate_legacy_tasks_async(uid)
+                if migrated:
+                    logger.info("Migrated %d legacy tasks for user %s", migrated, uid)
+    except Exception:
+        logger.exception("Could not migrate legacy tasks")
+
+    # ── Resume active workflows ───────────────────────────────────────────────
+    try:
+        from workflow_engine import resume_all_active_workflows_async
+        from connectors.whatsapp import whatsapp as _wa
+        accounts = await load_accounts()
+        for _email, acct in accounts.items():
+            uid = acct.get("storage_id") or acct.get("user_id")
+            if uid:
+                sid = _wa.get_session_id(uid)
+                advanced = await resume_all_active_workflows_async(uid, sid)
+                if advanced:
+                    logger.info("Resumed %d workflow(s) for user %s", advanced, uid)
+    except Exception:
+        logger.exception("Could not resume workflows on startup")
+
+    # ── Start proactive engine ────────────────────────────────────────────────
+    try:
+        start_proactive_worker()
+        logger.info("Proactive worker started")
+    except Exception:
+        logger.exception("Could not start proactive worker")
 
 
 @app.on_event("shutdown")
@@ -1004,6 +1056,7 @@ async def get_integrations(current_user: User = Depends(get_current_user)):
         whatsapp_info["last_error"] = "WhatsApp bridge unavailable"
         await update_whatsapp_state_async(current_user.storage_id, connected=False, last_error=str(e))
 
+    gmail_status = gmail_connector.get_status(current_user.storage_id)
     return {
         "email": {
             "connected": bool(email_state.get("connected")),
@@ -1013,6 +1066,12 @@ async def get_integrations(current_user: User = Depends(get_current_user)):
             "imap_host": email_state.get("imap_host", ""),
             "imap_port": email_state.get("imap_port"),
             "last_error": email_state.get("last_error", ""),
+        },
+        "gmail": {
+            "connected": gmail_status["connected"],
+            "email": gmail_status["email"],
+            "last_error": gmail_status["last_error"],
+            "oauth_available": gmail_connector.is_configured(),
         },
         "whatsapp": whatsapp_info,
     }
@@ -1118,7 +1177,7 @@ async def gmail_oauth_callback(
     that was saved in their integrations record at auth-url time.
     """
     if error:
-        return HTMLRedirectResponse(f"/chat-ui?gmail_error={error}")
+        return HTMLRedirectResponse(f"/?gmail_error={error}")
 
     if not code:
         raise HTTPException(status_code=400, detail="Missing OAuth code.")
@@ -1152,11 +1211,11 @@ async def gmail_oauth_callback(
         )
     except Exception as exc:
         logger.exception("Gmail OAuth callback failed for %s", storage_id)
-        return HTMLRedirectResponse(f"/chat-ui?gmail_error={str(exc)[:120]}")
+        return HTMLRedirectResponse(f"/?gmail_error={str(exc)[:120]}")
 
     email_addr = result.get("email", "")
     logger.info("Gmail connected for %s (%s)", storage_id, email_addr)
-    return HTMLRedirectResponse(f"/chat-ui?gmail_connected=1&gmail_email={email_addr}")
+    return HTMLRedirectResponse(f"/?gmail_connected=1&gmail_email={email_addr}")
 
 
 @app.delete("/api/integrations/gmail")
@@ -1470,6 +1529,7 @@ async def get_weather_endpoint(current_user: User = Depends(get_current_user)):
     except Exception:
         return {"error": "Could not fetch weather", "city": "Bengaluru"}
 
+# ── Legacy task endpoints (kept for dashboard backward compat) ────────────────
 @app.get("/tasks")
 async def get_tasks(current_user: User = Depends(get_current_user)):
     from tasks import load_tasks_async
@@ -1503,6 +1563,142 @@ async def delete_task_endpoint(task_id: str, current_user: User = Depends(get_cu
         return {"ok": False}
     tasks = [t for t in tasks if str(t["id"]) != task_id]
     await save_tasks_async(tasks, current_user.storage_id)
+    return {"ok": True}
+
+
+# ── Tasks V2 API ──────────────────────────────────────────────────────────────
+class TaskV2CreateRequest(BaseModel):
+    text: str
+    priority: str = "medium"
+    due_date: Optional[str] = None
+    parent_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class TaskV2UpdateRequest(BaseModel):
+    text: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    notes: Optional[str] = None
+    due_date: Optional[str] = None
+
+@app.get("/api/v2/tasks")
+async def get_tasks_v2(
+    status: Optional[str] = None,
+    current_user: "User" = Depends(get_current_user),
+):
+    """Return tasks as a tree (subtasks nested). Optional ?status=pending,in_progress filter."""
+    from task_manager_v2 import get_tasks_tree_async
+    status_filter = [s.strip() for s in status.split(",")] if status else None
+    tree = await get_tasks_tree_async(current_user.storage_id, status_filter=status_filter)
+    return {"tasks": tree}
+
+@app.post("/api/v2/tasks")
+async def create_task_v2(
+    req: TaskV2CreateRequest,
+    current_user: "User" = Depends(get_current_user),
+):
+    from task_manager_v2 import create_task_async
+    from db_schemas import TaskV2, TaskPriority
+    from datetime import datetime as _dt
+    task = TaskV2(
+        user_id=current_user.storage_id,
+        text=req.text[:MAX_TASK_LENGTH],
+        priority=req.priority,
+        parent_id=req.parent_id,
+        notes=req.notes,
+        due_date=_dt.fromisoformat(req.due_date) if req.due_date else None,
+    )
+    task_id = await create_task_async(task)
+    return {"ok": True, "task_id": task_id}
+
+@app.patch("/api/v2/tasks/{task_id}")
+async def update_task_v2(
+    task_id: str,
+    req: TaskV2UpdateRequest,
+    current_user: "User" = Depends(get_current_user),
+):
+    from task_manager_v2 import update_task_async
+    updates = req.model_dump(exclude_none=True)
+    updated = await update_task_async(task_id, current_user.storage_id, **updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    return {"ok": True}
+
+@app.delete("/api/v2/tasks/{task_id}")
+async def delete_task_v2(
+    task_id: str,
+    current_user: "User" = Depends(get_current_user),
+):
+    from task_manager_v2 import delete_task_async
+    deleted = await delete_task_async(task_id, current_user.storage_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    return {"ok": True}
+
+@app.get("/api/v2/tasks/next")
+async def get_next_task(current_user: "User" = Depends(get_current_user)):
+    """Return the single highest-priority task the user should work on next."""
+    from task_manager_v2 import suggest_next_task_async
+    task = await suggest_next_task_async(current_user.storage_id)
+    return {"task": task.model_dump() if task else None}
+
+
+# ── Workflow API ──────────────────────────────────────────────────────────────
+@app.get("/api/workflows")
+async def list_workflows(current_user: "User" = Depends(get_current_user)):
+    from workflow_engine import list_workflows_async
+    wfs = await list_workflows_async(current_user.storage_id)
+    return {"workflows": [w.model_dump() for w in wfs]}
+
+@app.post("/api/workflows/{wf_id}/advance")
+async def advance_workflow(
+    wf_id: str,
+    current_user: "User" = Depends(get_current_user),
+):
+    from workflow_engine import advance_workflow_async
+    from connectors.whatsapp import whatsapp as wa_connector
+    session_id = wa_connector.get_session_id(current_user.storage_id)
+    result = await advance_workflow_async(wf_id, current_user.storage_id, session_id)
+    return result
+
+@app.post("/api/workflows/{wf_id}/pause")
+async def pause_workflow(wf_id: str, current_user: "User" = Depends(get_current_user)):
+    from workflow_engine import pause_workflow_async
+    ok = await pause_workflow_async(wf_id, current_user.storage_id)
+    return {"ok": ok}
+
+@app.post("/api/workflows/{wf_id}/resume")
+async def resume_workflow_endpoint(wf_id: str, current_user: "User" = Depends(get_current_user)):
+    from workflow_engine import resume_workflow_async
+    ok = await resume_workflow_async(wf_id, current_user.storage_id)
+    return {"ok": ok}
+
+
+# ── Memory API ────────────────────────────────────────────────────────────────
+@app.get("/api/memory")
+async def get_memory_nodes(current_user: "User" = Depends(get_current_user)):
+    """Return all stored memory nodes for the Memory dashboard tab."""
+    from memory_retrieval import get_all_memories_async
+    nodes = await get_all_memories_async(current_user.storage_id)
+    return {"nodes": [n.model_dump() for n in nodes]}
+
+@app.delete("/api/memory/{node_id}")
+async def delete_memory_node(node_id: str, current_user: "User" = Depends(get_current_user)):
+    from storage import STORAGE_BACKEND, get_async_pool, _connect_sqlite, DB_PATH
+    sql = "DELETE FROM memory_nodes WHERE id = ? AND user_id = ?"
+    pg_sql = "DELETE FROM memory_nodes WHERE id = %s AND user_id = %s"
+    if STORAGE_BACKEND == "postgres":
+        pool = await get_async_pool()
+        async with pool.connection() as conn:
+            await conn.execute(pg_sql, (node_id, current_user.storage_id))
+            await conn.commit()
+    else:
+        import asyncio as _aio
+        def _d():
+            c = _connect_sqlite(DB_PATH)
+            with c: c.execute(sql, (node_id, current_user.storage_id))
+            c.close()
+        await _aio.get_event_loop().run_in_executor(None, _d)
     return {"ok": True}
 
 @app.get("/api/me/preferences")
@@ -2783,6 +2979,78 @@ async def get_briefing_pending(current_user: User = Depends(get_current_user)):
     uid = current_user.storage_id
     updates = get_pending_updates(uid)
     return {"updates": updates}
+
+
+# ── HITL Approval endpoints ────────────────────────────────────────────────
+@app.post("/api/hitl/approve/{token}")
+async def hitl_approve(token: str, current_user: "User" = Depends(get_current_user)):
+    """
+    Approve a pending HITL action. Executes the stored action payload and
+    marks the approval as resolved.
+    """
+    from db_schemas import get_hitl_approval, resolve_hitl_approval, HITLStatus
+    from multi_action_parser import ActionNode, ActionPlan, ExecutionContext, execute_plan
+    from connectors.whatsapp import whatsapp as wa_connector
+
+    approval = await get_hitl_approval(token)
+    if not approval:
+        raise HTTPException(status_code=404, detail="Approval token not found.")
+    if approval.user_id != current_user.storage_id:
+        raise HTTPException(status_code=403, detail="Not authorised.")
+    if approval.status != HITLStatus.PENDING:
+        return {"status": approval.status, "message": "Already resolved."}
+    if approval.expires_at < datetime.utcnow():
+        await resolve_hitl_approval(token, "expired", resolved_by="system_timeout")
+        return {"status": "expired", "message": "Approval window has passed."}
+
+    # Re-execute the action now that it's approved
+    node = ActionNode(
+        id="hitl_exec",
+        type=approval.action_type,
+        params=approval.action_payload,
+        confidence=1.0,
+        risk_level="low",  # already approved — bypass HITL gate
+    )
+    plan = ActionPlan(raw_reply="", actions=[node])
+    ctx = ExecutionContext(
+        user_id=approval.user_id,
+        session_id=wa_connector.get_session_id(approval.user_id),
+    )
+
+    # Temporarily lower threshold so this doesn't re-trigger HITL
+    import multi_action_parser as _map
+    _orig = _map.HITL_CONFIDENCE_THRESHOLD
+    _map.HITL_CONFIDENCE_THRESHOLD = 0.0
+    try:
+        result = await execute_plan(plan, ctx)
+    finally:
+        _map.HITL_CONFIDENCE_THRESHOLD = _orig
+
+    await resolve_hitl_approval(token, "approved", resolved_by="user")
+    action_result = result.results[0] if result.results else None
+    return {
+        "status": "approved",
+        "executed": action_result.success if action_result else False,
+        "result": action_result.result if action_result else None,
+        "error": action_result.error if action_result else None,
+    }
+
+
+@app.post("/api/hitl/reject/{token}")
+async def hitl_reject(token: str, current_user: "User" = Depends(get_current_user)):
+    """Reject (cancel) a pending HITL action."""
+    from db_schemas import get_hitl_approval, resolve_hitl_approval, HITLStatus
+
+    approval = await get_hitl_approval(token)
+    if not approval:
+        raise HTTPException(status_code=404, detail="Approval token not found.")
+    if approval.user_id != current_user.storage_id:
+        raise HTTPException(status_code=403, detail="Not authorised.")
+    if approval.status != HITLStatus.PENDING:
+        return {"status": approval.status, "message": "Already resolved."}
+
+    await resolve_hitl_approval(token, "rejected", resolved_by="user")
+    return {"status": "rejected", "message": f"Action '{approval.action_type}' cancelled."}
 
 
 @app.get("/api/suggest")

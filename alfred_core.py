@@ -49,15 +49,115 @@ def get_groq_client() -> Groq:
 
 EMAIL_RE = re.compile(r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,63}$", re.IGNORECASE)
 
-SYSTEM_PROMPT = """You are Alfred, a sharp, deeply personal AI assistant, part chief of staff, part Jarvis.
-You speak with calm authority, concise, warm, and occasionally dry.
-Never be generic. Be Alfred.
-Keep responses under 3 sentences unless asked for detail.
+SYSTEM_PROMPT = """You are Alfred — a sharp, deeply personal AI assistant. Part chief of staff, part Jarvis. You've worked with this person long enough to anticipate what they actually need.
 
-When the user says wake up, give a sharp briefing and ask what they are doing today.
+You speak with calm authority. Concise, warm, occasionally dry. Never generic. Be Alfred.
 
-ACTION TAGS, always put at the very end of your reply, one tag only:
+── THINK BEFORE ACTING ──
+For every request, run this loop internally before responding:
+1. UNDERSTAND: What does the user actually want? Not just the literal request — what are they trying to achieve?
+2. GOAL CHECK: Is this part of something bigger — an outreach campaign, a project, a recurring workflow?
+3. CONTEXT CHECK: What do I already know — memory, tasks, recent context — that changes how I should respond?
+4. DECIDE:
+   • Request is clear and low-risk → act directly, brief confirmation
+   • Request is ambiguous → ask ONE sharp clarifying question, don't guess and act
+   • Multiple valid approaches → pick the best one, briefly say why
+   • High-risk action (sending, deleting, system commands) → state intent first, then act
+5. PLAN: For 2+ step tasks, state the steps in one line before executing
 
+── DECISION RULES ──
+• Unclear request → ask ONE precise question. Not multiple. Not a list.
+• Multiple valid options → recommend the best one with a one-line rationale. Don't list them all.
+• Low-risk + obvious → act directly. Skip confirmation theater.
+• High-risk (messages to others, financial, destructive system actions) → state what you're about to do, then do it.
+• Sensitive topics (money, relationships, health, legal) → be thoughtful, not just efficient.
+
+── CONFIDENCE-AWARE LANGUAGE ──
+Calibrate your certainty in how you speak, not just what you say:
+• High confidence (clear context, obvious answer) → "Best move here is...", "Go with X", "Do this."
+• Medium confidence (reasonable but not certain) → "Probably worth...", "I'd lean toward...", "My read is..."
+• Low confidence (missing context, ambiguous) → "Might want to check if...", "Worth asking whether...", "Not sure — what's the goal?"
+Never hedge everything. Never be certain about things you're guessing at.
+
+── FOLLOW-THROUGH ──
+When follow-through is warranted, fold it into the response — not as a separate line bolted on at the end.
+Wrong: "Email sent.\n\nWant me to set a follow-up reminder?"
+Right: "Sent — I'll flag it if there's no reply by end of week, unless you'd rather I don't."
+Right: "Done. Should I set a deadline on this, or is it more of a 'get to it eventually' thing?"
+Ask yourself first: is there genuinely useful follow-through here, or am I just filling space?
+If the answer is "filling space" — stop. A clean response beats a padded one.
+
+── PRIORITIZATION ──
+When there are multiple tasks, don't summarize — recommend. If you can see the task list:
+• Identify the single most pressing item and say so explicitly
+• "The one I'd tackle first is [X] — it's marked urgent and has been sitting"
+• Don't list everything. Surface the one that matters.
+If the REASONING FRAME includes a PRIORITY tag, use that specific task in your response.
+
+── RESPONSE STYLE ──
+• Keep responses under 3 sentences unless the user asked for detail
+• Lead with the answer or action — not the reasoning
+• Be slightly opinionated when it helps: "I'd go with X because..." not "here are some options"
+• Dry wit is welcome when the moment fits. Forced cheerfulness is not.
+• Never say "Certainly!", "Of course!", "Great question!", or any hollow opener
+• Don't narrate what you're doing ("I'm now going to...") — just do it
+• Vary your phrasing — don't repeat the same sentence structures across responses
+
+── RESTRAINT ──
+Not every response needs a next step. Not every action needs a follow-up.
+• Someone asks a question → answer it and stop
+• Someone sets the volume → confirm and stop
+• Someone says thanks → acknowledge briefly and stop
+• Someone completes a simple task → confirm and stop
+The strongest signal of good judgment is knowing when to say nothing more.
+
+── MEMORY AWARENESS ──
+• Use what you already know — don't ask things you've been told
+• Don't repeat information the user just gave you
+• Reference past context naturally when relevant, or just use it without calling it out
+• Adapt to their patterns: if they always want brevity, be brief; if they like detail, give detail
+• First-time users: be slightly more explicit about what you're doing and why
+• Repeat users with known name and context: skip intros, get to the point
+
+── PROACTIVITY ──
+• Think one step ahead — but only when it's actually useful, not as a habit
+• Surface risks or better approaches before the user hits them
+• Only intervene when you'd actually want to be interrupted for it
+• Silence is better than a mediocre suggestion
+
+── PLANNING BEFORE ACTING ──
+For requests involving 2+ actions, or where you're uncertain about a step:
+1. State what you're about to do in one line
+2. Then output the ACTIONS array
+Do NOT explain each action at length — just act.
+
+── MULTI-ACTION FORMAT (preferred) ──
+Place at the very end of your reply. Use when you need multiple actions or one depends on another.
+
+ACTIONS: [
+  {
+    "id": "a0",
+    "type": "ACTION_TYPE",
+    "params": { ... },
+    "confidence": 0.95,
+    "risk_level": "low|medium|high",
+    "depends_on": []
+  },
+  {
+    "id": "a1",
+    "type": "ACTION_TYPE",
+    "params": { "key": "{{a0.result}}" },
+    "confidence": 0.85,
+    "risk_level": "medium",
+    "depends_on": ["a0"]
+  }
+]
+
+Use {{a0.result}} to inject the result of action a0 into a later action's params.
+risk_level: low = read/informational, medium = messaging/send, high = destructive/system.
+High-risk or low-confidence actions will be shown to the user for approval before executing.
+
+── SINGLE-ACTION FORMAT (backward compatible) ──
 ACTIVATE_MODE: {"mode": "study|work|gaming|streaming|sleep"}
 WHATSAPP_SEND: {"number": "EXACT NAME FROM CONTACTS LIST or full phone number with country code", "message": "MESSAGE"}
 EMAIL_SEND: {"to": "EMAIL OR CONTACT NAME", "subject": "SUBJECT", "body": "BODY"}
@@ -70,23 +170,29 @@ MAC_LOCK: {}
 MAC_SLEEP: {}
 MEMORY_UPDATE: {"key": "value"}
 PPTX_CREATE: {"topic": "full topic or outline for the presentation"}
-RUN_TERMINAL: {"command": "command to run"} (Use this to create folders, manage files, or run any shell commands on the user's Mac. Note: Mac uses 'Finder', not 'File Explorer'.)
-WEB_SEARCH: {"query": "exact search term", "engine": "free"} (Use engine "tavily" ONLY for specific live sports, match schedules, or when deep context from complex sites is required. Otherwise, ALWAYS use "free" for normal lookups.)
+RUN_TERMINAL: {"command": "command to run"}
+WEB_SEARCH: {"query": "exact search term", "engine": "free"}
+TASK_CREATE: {"text": "task description", "priority": "low|medium|high|urgent", "due_date": "YYYY-MM-DD or null"}
+WORKFLOW_CREATE: {"name": "workflow name", "steps": [{"step_id": "s0", "name": "Step Name", "action_type": "ACTION_TYPE", "params": {}, "depends_on": []}]}
 
-PPTX_CREATE rules: Use this when the user asks Alfred to "make a presentation", "create a deck", "create slides", or "generate a PPT" on any topic. Put the full topic/outline in "topic". Alfred will build and return a downloadable PowerPoint automatically. Do not describe how to do it — just output the tag.
-To read and explain a document: tell the user to use the 📎 attach button and send the file. Alfred can read PDFs, Word docs, PowerPoint files, code, and images.
+── ACTION RULES ──
+PPTX_CREATE: Use when asked to "make a presentation", "create slides", or "generate a PPT".
+TASK_CREATE: Use when the user asks to track a goal, project, or multi-step objective. After creating, suggest next steps.
+WORKFLOW_CREATE: Use for multi-step processes the user will run repeatedly (e.g. outreach, onboarding, follow-up campaigns).
+WEB_SEARCH: Use engine "tavily" ONLY for live sports/schedules. Use "free" for all other searches.
+CRITICAL: For factual questions, current events, prices, scores — ALWAYS use WEB_SEARCH. Never guess.
+Do NOT use RUN_TERMINAL for internet searches. RUN_TERMINAL is for local macOS operations only.
+To read a document: tell the user to use the attach button.
 
 __PREMIUM_COLD_EMAIL_PLACEHOLDER__
 
-WHATSAPP_SEND rules — read carefully:
-- ONLY use WHATSAPP_SEND if: (a) the user gave a full phone number directly, OR (b) the recipient name is clearly present in the "Contacts:" section below.
-- If the Contacts section is empty, or the recipient name is NOT in the list, do NOT use WHATSAPP_SEND. Instead, reply asking the user: "I don't have [name]'s number saved. What's their WhatsApp number?"
-- The "number" field must be the exact name from the Contacts list (e.g. "Mum", "Rahul Sharma") or a real phone number. NEVER put "unknown", "n/a", a guess, or a placeholder.
+WHATSAPP_SEND rules:
+- ONLY use if: (a) user gave a full phone number, OR (b) recipient is in the Contacts section below.
+- If not in Contacts, ask: "I don't have [name]'s number. What's their WhatsApp number?"
+- "number" field = exact name from Contacts or real phone number. NEVER use "unknown", "n/a", or placeholders.
 
-If the user gives a direct short instruction like "message Rahul I'm running late" or "email Priya the deck is ready", act immediately with the correct send tag only if the contact exists.
-Prefer WhatsApp for message/text/whatsapp requests and email for email/mail requests.
-Only use a tag when explicitly asked.
-CRITICAL: If you are asked a factual question, a query about current events (sports, news, schedules, prices), or anything you do not know the exact answer to, you MUST use the WEB_SEARCH tag! Do NOT use RUN_TERMINAL for searching the internet. Use RUN_TERMINAL exclusively for local macOS file operations, system setting changes, or running local scripts."""
+Prefer WhatsApp for message/text requests, email for email/mail requests.
+Only output action tags when there is a clear actionable instruction."""
 
 
 def parse_tag(reply, tag):
@@ -259,6 +365,358 @@ def build_email_subject(body: str) -> str:
     return cleaned[:57].rstrip() + "..."
 
 
+def _build_thinking_context(raw_message: str, memory: dict, task_count: int) -> str:
+    """
+    Build a goal-aware cognitive frame injected into the system prompt.
+
+    Goes beyond intent classification to infer:
+      - what the user is actually trying to achieve (goal)
+      - urgency level
+      - whether this is part of a larger workflow
+      - whether follow-up is likely needed
+      - context sensitivity (workload, familiarity, time of day)
+
+    No extra API call — pure semantic pattern analysis.
+    """
+    from datetime import datetime
+
+    msg = raw_message.lower().strip()
+    word_set = set(msg.split())
+    word_count = len(msg.split())
+    hints: list = []
+
+    # ── Urgency detection ────────────────────────────────────────────────────
+    _URGENCY_SIGNALS = {
+        "urgent", "asap", "immediately", "right now", "right away", "quick",
+        "quickly", "tonight", "this morning", "deadline", "emergency",
+        "last minute", "before end of day", "eod", "before i forget",
+        "in 5 minutes", "in 30 minutes", "before the meeting", "before my call",
+    }
+    is_urgent = any(sig in msg for sig in _URGENCY_SIGNALS)
+
+    # ── Intent classification ────────────────────────────────────────────────
+    _ACTION_VERBS = {
+        "send", "email", "message", "whatsapp", "create", "add", "set", "open",
+        "play", "lock", "sleep", "search", "remind", "schedule", "make", "write",
+        "draft", "book", "cancel", "delete", "remove", "forward", "reply",
+        "call", "text", "ping", "update", "build", "track", "research",
+    }
+    is_action_request = any(w in word_set or msg.startswith(w + " ") for w in _ACTION_VERBS)
+    is_question = (
+        msg.endswith("?")
+        or any(
+            msg.startswith(w + " ")
+            for w in ["what", "who", "when", "where", "why", "how", "is", "are",
+                      "can", "do", "does", "should", "would", "could", "will",
+                      "tell me", "show me"]
+        )
+    )
+    is_vague = word_count <= 3 and not is_action_request
+    is_high_stakes = any(w in msg for w in [
+        "delete", "remove", "wipe", "cancel", "fire", "quit", "resign",
+        "money", "invest", "loan", "send all", "forward all",
+    ])
+    is_ambiguous = word_count <= 6 and not is_action_request and not is_question and not is_high_stakes
+
+    # ── Goal inference ───────────────────────────────────────────────────────
+    # Map surface request → underlying goal → what Alfred should be thinking about
+    goal: str = ""
+    follow_up_likely: bool = False
+    is_part_of_workflow: bool = False
+    pre_action_suggestion: str = ""
+
+    _SEND_WORDS = {"email", "whatsapp", "message", "text", "ping", "reach out", "send", "reply", "forward"}
+    _BUSINESS_WORDS = {"client", "customer", "investor", "partner", "prospect", "lead", "vendor", "team", "boss"}
+    _FOLLOWUP_WORDS = {"follow up", "follow-up", "check in", "checking in", "catch up", "following up"}
+    _TASK_WORDS = {"task", "todo", "to-do", "track", "project", "goal", "milestone", "deadline", "add"}
+    _RESEARCH_WORDS = {"search", "find", "research", "look up", "who is", "what is", "latest", "news"}
+    _SCHEDULE_WORDS = {"schedule", "meeting", "calendar", "call", "appointment", "block", "event"}
+    _BUILD_WORDS = {"workflow", "automate", "process", "template", "campaign", "outreach", "system"}
+
+    if any(w in msg for w in _SEND_WORDS):
+        if any(w in msg for w in _FOLLOWUP_WORDS):
+            goal = "following up with a contact"
+            follow_up_likely = True
+            pre_action_suggestion = "suggest tracking the reply before sending"
+        elif any(w in msg for w in _BUSINESS_WORDS):
+            goal = "business communication — likely needs reply tracking"
+            follow_up_likely = True
+            is_part_of_workflow = True
+            pre_action_suggestion = "mention follow-up tracking before or right after sending"
+        elif "team" in msg or "colleague" in msg:
+            goal = "internal coordination"
+        else:
+            goal = "reaching out to someone"
+            follow_up_likely = True
+
+    elif any(w in word_set for w in _TASK_WORDS):
+        if task_count >= 8:
+            goal = f"adding to a heavy queue ({task_count} active) — prioritization may be more useful than adding"
+        elif task_count >= 5:
+            goal = "tracking a new item — user has an active queue, keep it focused"
+        else:
+            goal = "capturing a commitment or next step"
+        follow_up_likely = True
+        pre_action_suggestion = "after creating, ask if they want a due date or subtasks"
+
+    elif any(w in msg for w in _RESEARCH_WORDS):
+        goal = "gathering information for a decision or action"
+        pre_action_suggestion = "after returning results, offer to save as a note if substantial"
+
+    elif any(w in msg for w in _SCHEDULE_WORDS):
+        goal = "coordinating time — prep reminder is almost always wanted"
+        follow_up_likely = True
+        pre_action_suggestion = "suggest a prep reminder before or right after scheduling"
+
+    elif any(w in msg for w in _BUILD_WORDS):
+        goal = "building a repeatable system or process"
+        is_part_of_workflow = True
+        follow_up_likely = True
+        pre_action_suggestion = "after building, offer to kick off the first step"
+
+    # Sequential intent — part of a larger chain
+    _CHAIN_SIGNALS = ["then", "after that", "next", "and then", "also", "once that", "while you're at it"]
+    if any(sig in msg for sig in _CHAIN_SIGNALS):
+        is_part_of_workflow = True
+
+    # ── "Do nothing" detection ───────────────────────────────────────────────
+    # For trivial or conversational messages, complete the action and stop.
+    _TRIVIAL_ACTIONS = {"lock", "sleep", "volume", "play", "pause", "next", "previous", "mute"}
+    _CONVERSATIONAL = {
+        "thanks", "thank you", "ok", "okay", "got it", "sounds good",
+        "perfect", "great", "cool", "nice", "noted", "alright", "sure",
+    }
+    is_trivial = any(w in word_set for w in _TRIVIAL_ACTIONS) and word_count <= 5
+    is_conversational = any(w in msg for w in _CONVERSATIONAL) and word_count <= 5
+
+    if is_trivial or is_conversational:
+        hints.append(
+            "DO NOTHING: Trivial or conversational message. "
+            "Complete the action (if any) and stop. No suggestions, no follow-through."
+        )
+        # Return early — no further analysis needed for trivial messages
+        return "── REASONING FRAME ──\n" + "\n".join(hints)
+
+    # ── Confidence inference ─────────────────────────────────────────────────
+    # Based on how specific and well-formed the request is
+    if word_count >= 10 and is_action_request and not is_ambiguous:
+        confidence = "high"
+        confidence_note = "Use direct language: 'best move is...', 'go with X', direct recommendation."
+    elif word_count >= 6 or (is_question and not is_vague):
+        confidence = "medium"
+        confidence_note = "Use considered language: 'probably worth...', 'I'd lean toward...', 'my read is...'"
+    elif is_vague or is_ambiguous:
+        confidence = "low"
+        confidence_note = "Use exploratory language: 'what's the goal here?', 'worth checking if...'"
+    else:
+        confidence = "medium"
+        confidence_note = "Use considered language where uncertain, direct where clear."
+    hints.append(f"CONFIDENCE: {confidence} — {confidence_note}")
+
+    # ── Assemble decision hints ──────────────────────────────────────────────
+    if is_vague or is_ambiguous:
+        hints.append(
+            "INTENT: Unclear. Ask ONE precise clarifying question before acting. "
+            "Do not guess and proceed."
+        )
+    elif is_high_stakes:
+        hints.append(
+            "INTENT: High-stakes. State exactly what you're about to do, then proceed — "
+            "do not act silently on a destructive operation."
+        )
+    elif is_action_request:
+        urgency_note = " User signaled urgency — skip all preamble, act immediately." if is_urgent else ""
+        hints.append(f"INTENT: Clear action request. Act directly.{urgency_note}")
+    elif is_question:
+        hints.append("INTENT: Information request. Lead with the direct answer, no preamble.")
+
+    # ── Goal frame ───────────────────────────────────────────────────────────
+    if goal:
+        hints.append(f"GOAL: {goal}.")
+
+    if pre_action_suggestion and not is_vague and not is_urgent:
+        hints.append(f"PRE-ACTION: Blend this into your response naturally — {pre_action_suggestion}.")
+
+    if is_part_of_workflow:
+        hints.append(
+            "WORKFLOW: Part of a larger sequence. "
+            "Acknowledge the current step and point to what comes next — briefly."
+        )
+
+    if follow_up_likely and not is_vague and not is_urgent:
+        hints.append(
+            "FOLLOW-UP: Warranted here — fold it into the response naturally, "
+            "not as a separate appended line."
+        )
+
+    # ── Context sensitivity ──────────────────────────────────────────────────
+    mem = memory or {}
+    name = mem.get("name", "")
+    is_known_user = bool(mem)
+
+    if name:
+        hints.append(f"USER: Known as {name}. No re-introductions. Get to the point.")
+    elif not is_known_user:
+        hints.append("USER: New interaction. Be slightly more explicit about what you're doing.")
+
+    if task_count >= 8:
+        hints.append(
+            f"WORKLOAD: Heavy ({task_count} active tasks). "
+            "Prioritization > adding more. If PRIORITY is set below, surface that specific task."
+        )
+    elif task_count >= 5:
+        hints.append(f"WORKLOAD: Moderate ({task_count} tasks). Keep suggestions to one at a time.")
+
+    # ── Tone hint based on time of day ───────────────────────────────────────
+    hour = datetime.now().hour
+    if is_urgent:
+        hints.append("TONE: User is in a hurry. Maximum brevity. No softening.")
+    elif hour < 10:
+        hints.append("TONE: Morning — planning mode. Direct and energetic is appropriate.")
+    elif hour >= 20:
+        hints.append("TONE: Late evening — brief. User is winding down.")
+
+    if not hints:
+        return ""
+    return "── REASONING FRAME ──\n" + "\n".join(hints)
+
+
+def _build_prioritization_context(tasks: list) -> str:
+    """
+    Analyze the loaded task list and surface the single most urgent item.
+    Injected into the system prompt so Alfred recommends specifically rather than generically.
+    Returns a one-line PRIORITY hint, or empty string if nothing stands out.
+    """
+    if not tasks:
+        return ""
+
+    _PRIORITY_SCORE = {"urgent": 4, "high": 3, "medium": 2, "low": 1}
+
+    scored: list = []
+    for t in tasks:
+        status = t.get("status", "pending") if isinstance(t, dict) else "pending"
+        if status not in ("pending", "in_progress"):
+            continue
+        priority = t.get("priority", "medium") if isinstance(t, dict) else "medium"
+        text = t.get("text", "") if isinstance(t, dict) else str(t)
+        score = _PRIORITY_SCORE.get(priority, 2)
+        if status == "in_progress":
+            score += 0.5  # in-progress tasks get a slight boost
+        if text:
+            scored.append((score, priority, text))
+
+    if not scored:
+        return ""
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top_score, top_priority, top_text = scored[0]
+
+    # Only surface a priority hint if there's a genuinely high-priority item
+    if top_score < 3:  # below "high" threshold — not worth calling out
+        return ""
+
+    return (
+        f"PRIORITY: Top task is [{top_priority.upper()}] \"{top_text}\". "
+        f"If relevant to the user's request, recommend this one specifically."
+    )
+
+
+def _maybe_append_followthrough(
+    reply: str,
+    results: list,
+    raw_message: str = "",
+    memory: dict = None,
+    task_count: int = 0,
+) -> str:
+    """
+    Append a natural follow-through suggestion when the LLM doesn't include one.
+
+    Context-aware:
+      - Skips when user signaled urgency (they want speed, not next steps)
+      - Adapts phrasing for heavy workload (redirects to priority vs. add more)
+      - Uses varied phrasings to avoid template-like repetition
+      - Only fires once, for the highest-priority completed action
+    """
+    import random
+
+    msg = (raw_message or "").lower()
+
+    # ── Skip conditions ──────────────────────────────────────────────────────
+    reply_lower = reply.lower()
+
+    # Already contains a follow-up question or suggestion
+    if reply.rstrip().endswith("?"):
+        return reply
+    if any(phrase in reply_lower for phrase in [
+        "want me to", "should i", "shall i", "would you like",
+        "need me to", "let me know if", "want a reminder", "want to",
+        "i'll flag", "i'll remind", "i'll track",
+    ]):
+        return reply
+
+    # User was in a hurry — don't add anything
+    _URGENCY = {"urgent", "asap", "right now", "quickly", "quick", "immediately", "eod", "tonight"}
+    if any(w in msg for w in _URGENCY):
+        return reply
+
+    # Trivial actions — complete and stop, never follow-through
+    _TRIVIAL_ACTION_TYPES = {
+        "MAC_LOCK", "MAC_SLEEP", "MAC_VOLUME", "SPOTIFY",
+        "ACTIVATE_MODE", "OPEN_APP", "SAVE_NOTE", "SET_REMINDER",
+    }
+    successful_types = {r.action_type for r in (results or []) if r.success}
+    if not successful_types:
+        return reply
+    if successful_types.issubset(_TRIVIAL_ACTION_TYPES):
+        return reply  # all completed actions are trivial — stop here
+
+    # ── Only fire for genuinely high-value actions ───────────────────────────
+    # TASK_CREATE: handled naturally by the LLM via system prompt guidance.
+    # EMAIL_SEND: worth a fallback because reply-tracking is often forgotten.
+    # WORKFLOW_CREATE: always worth confirming readiness.
+    _HIGH_VALUE = {"EMAIL_SEND", "WORKFLOW_CREATE"}
+    high_value_hits = successful_types & _HIGH_VALUE
+    if not high_value_hits:
+        return reply
+
+    # ── Context flags ────────────────────────────────────────────────────────
+    is_business_context = any(w in msg for w in [
+        "client", "customer", "investor", "partner", "prospect", "lead", "vendor",
+    ])
+
+    # ── Phrasing pools ───────────────────────────────────────────────────────
+    _EMAIL_VARIANTS = [
+        "Want me to flag this for follow-up if there's no reply?",
+        "Should I remind you if you don't hear back in a few days?",
+        "Want a nudge if there's no reply by end of week?",
+    ]
+    if is_business_context:
+        _EMAIL_VARIANTS = [
+            "Want me to track this and remind you if there's no reply?",
+            "Should I set a follow-up? Client emails tend to slip.",
+            "Want a reminder if you don't hear back in 3 days?",
+        ]
+
+    _WORKFLOW_VARIANTS = [
+        "Ready to kick off the first step when you are.",
+        "Want to run step one now?",
+        "Should I trigger the first step?",
+    ]
+
+    FOLLOWTHROUGH_POOLS = {
+        "WORKFLOW_CREATE": _WORKFLOW_VARIANTS,
+        "EMAIL_SEND": _EMAIL_VARIANTS,
+    }
+
+    # Fire for the highest-value completed action
+    for action_type in ["WORKFLOW_CREATE", "EMAIL_SEND"]:
+        if action_type in high_value_hits:
+            pool = FOLLOWTHROUGH_POOLS[action_type]
+            return reply + f"\n\n{random.choice(pool)}"
+
+    return reply
+
+
 def send_whatsapp_message(user_id: str, session_id: str, recipient_hint: str, body: str) -> tuple[bool, str]:
     """Send a WhatsApp message via the connector."""
     return whatsapp_connector.send_message(user_id, session_id, recipient_hint, body)
@@ -290,28 +748,66 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
     system += "\n\n" + time_context
     system += "\n\nCurrent mode: " + get_current_mode()
 
-    # ── Live Task & Note Awareness ──
+    # ── Raw user message (needed by memory retrieval below) ──────────────────
+    raw_user_msg = messages[-1]["content"].strip() if messages else ""
+
+    # ── Semantic memory injection (retrieved nodes relevant to this query) ────
     try:
-        from tasks import load_tasks_async
+        from memory_retrieval import inject_memory_context_async
+        mem_retrieved = await inject_memory_context_async(user_id, raw_user_msg)
+        if mem_retrieved:
+            system += "\n\n" + mem_retrieved
+    except Exception as e:
+        logger.warning("Memory retrieval failed (non-fatal): %s", e)
+
+    # ── Live Task & Note Awareness ──
+    _task_count = 0
+    try:
+        from task_manager_v2 import get_tasks_tree_async
+        tree = await get_tasks_tree_async(user_id, status_filter=["pending", "in_progress"])
+        if tree:
+            _task_count = len(tree)
+            task_lines = []
+            for t in tree[:10]:
+                priority_marker = {"urgent": "!!", "high": "!", "medium": "·", "low": "·"}.get(t.get("priority", "medium"), "·")
+                task_lines.append(f"{priority_marker} [{t.get('status','')}] {t.get('text','')}")
+                for sub in t.get("subtasks", [])[:3]:
+                    task_lines.append(f"   └ {sub.get('text','')}")
+            system += "\n\nActive Tasks:\n" + "\n".join(task_lines)
+            if len(tree) > 10:
+                system += f"\n...and {len(tree)-10} more."
+    except Exception:
+        # Fall back to legacy tasks if tasks_v2 not ready
+        try:
+            from tasks import load_tasks_async
+            tasks = await load_tasks_async(user_id)
+            pending_tasks = [t for t in tasks if not t.get("done", False)]
+            _task_count = len(pending_tasks)
+            if pending_tasks:
+                system += "\n\nPending Tasks:\n- " + "\n- ".join([t.get("text", "") for t in pending_tasks[:10]])
+        except Exception as e:
+            logger.error("Failed to inject task context: %s", e)
+
+    try:
         from notes import get_notes_async
-        tasks = await load_tasks_async(user_id)
-        pending_tasks = [t for t in tasks if not t.get("done", False)]
-        if pending_tasks:
-            system += "\n\nPending Tasks:\n- " + "\n- ".join([t.get("text", "") for t in pending_tasks[:10]])
-            if len(pending_tasks) > 10:
-                system += f"\n...and {len(pending_tasks) - 10} more."
-        
         notes = await get_notes_async(user_id)
         if notes:
-            # Inject only the 3 most recent notes to save context
             recent_notes = notes[-3:] if isinstance(notes, list) else []
             if recent_notes:
                 system += "\n\nRecent Notes:\n- " + "\n- ".join([n.get("content", "")[:120] for n in recent_notes])
     except Exception as e:
-        logger.error("Failed to inject live context: %s", e)
+        logger.error("Failed to inject notes context: %s", e)
+
+    # ── Inject active workflows ───────────────────────────────────────────────
+    try:
+        from workflow_engine import get_active_workflows_summary_async
+        wf_summary = await get_active_workflows_summary_async(user_id)
+        if wf_summary:
+            system += "\n\n" + wf_summary
+    except Exception:
+        pass
 
     # ── Memory extraction: silently detect & store events/tasks the user mentions ──
-    raw_user_msg = messages[-1]["content"].strip() if messages else ""
     _tracker_confirmation = await memory_tracker.extract_and_store_async(raw_user_msg, user_id)
 
     memory = await load_memory_async(user_id)
@@ -319,7 +815,13 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
     if not memory:
         system += "\n\nYou do not know the user name yet. Ask warmly on first interaction."
 
-    raw_last_msg = messages[-1]["content"].strip() if messages else ""
+    # ── Cognitive frame: guides LLM reasoning without an extra API call ──────
+    thinking_ctx = _build_thinking_context(raw_user_msg, memory or {}, _task_count)
+    if thinking_ctx:
+        system += "\n\n" + thinking_ctx
+
+    # raw_user_msg already set above; alias for readability in bypass handlers
+    raw_last_msg = raw_user_msg
     last_msg = raw_last_msg.lower()
 
 
@@ -736,174 +1238,50 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
             raise
 
     reply = response.choices[0].message.content
-    print("FULL REPLY: " + reply)
+    logger.debug("LLM raw reply: %.200s", reply)
 
-    clean_reply, memory_update = parse_tag(reply, "MEMORY_UPDATE")
-    if memory_update:
-        for key, value in memory_update.items():
-            await update_memory_async(key, value, user_id)
+    # ── NEW: Multi-action DAG execution engine ────────────────────────────────
+    from multi_action_parser import parse_and_execute
+    plan_result = await parse_and_execute(
+        reply, user_id, whatsapp_session_id, display_name
+    )
 
-    clean_reply, mode_data = parse_tag(clean_reply, "ACTIVATE_MODE")
-    if mode_data:
-        activate_mode(mode_data.get("mode", ""))
+    # ── Special-case: PPTX reply override ────────────────────────────────────
+    if plan_result.pending_pptx_topic and not plan_result.reply.strip():
+        plan_result = plan_result.model_copy(update={
+            "reply": f'Building your presentation on \u201c{plan_result.pending_pptx_topic}\u201d \u2014 one moment\u2026'
+        })
 
-    # ── Presentation creation (file generated by the caller in main.py) ──────
-    clean_reply, pptx_data = parse_tag(clean_reply, "PPTX_CREATE")
-    pending_pptx_topic: Optional[str] = None
-    if pptx_data and isinstance(pptx_data, dict):
-        topic = str(pptx_data.get("topic", "")).strip()
-        if topic:
-            pending_pptx_topic = topic
-            # Replace the LLM's reply with a crisp one-liner (the download button
-            # will appear automatically once main.py generates the file).
-            clean_reply = clean_reply or f'Building your presentation on \u201c{topic}\u201d \u2014 one moment\u2026'
+    # ── Async memory extraction (fire-and-forget, non-blocking) ──────────────
+    try:
+        from memory_retrieval import extract_and_store_async as _mem_extract
+        asyncio.ensure_future(_mem_extract(raw_last_msg, plan_result.reply, user_id))
+    except Exception:
+        pass
 
-    clean_reply, wa_data = parse_tag(clean_reply, "WHATSAPP_SEND")
-    if wa_data:
-        wa_number = str(wa_data.get("number", "") or "").strip()
-        wa_body   = str(wa_data.get("message", "") or "").strip()
-        # Guard: ignore the tag when the LLM emits a known placeholder value
-        _PLACEHOLDERS = {"unknown", "n/a", "na", "none", "number", "phone", "contact name",
-                         "exact name from contacts list", "recipient", "name", ""}
-        if wa_number.lower() in _PLACEHOLDERS:
-            # LLM couldn't resolve the contact — silently drop the broken tag so the
-            # user only sees the LLM's polite "I don't have that number" reply text.
-            pass
-        elif not wa_body:
-            clean_reply += "\n\n(WhatsApp message body was empty — nothing sent.)"
-        else:
-            try:
-                sent, message = send_whatsapp_message(
-                    user_id,
-                    whatsapp_session_id,
-                    wa_number,
-                    wa_body,
-                )
-                print(f"WhatsApp send result: sent={sent}, message={message!r}")
-                if not sent:
-                    err = message or ""
-                    is_crash = any(x in err.lower() for x in ["detached frame", "context", "503", "connection lost", "crash"])
-                    if is_crash:
-                        clean_reply += "\n\nWhatsApp connection dropped. I'm automatically attempting to restart the engine—please wait 10 seconds and try your request again."
-                    else:
-                        # Show the real error so the user knows what went wrong
-                        clean_reply += "\n\n(WhatsApp: " + (err or "message could not be sent.") + ")"
-                else:
-                    print("WhatsApp result: " + message)
-            except Exception as e:
-                err = str(e)
-                print("WhatsApp exception: " + err)
-                if "detached Frame" in err or "context" in err.lower() or "503" in err:
-                    clean_reply += "\n\nWhatsApp connection dropped. I'm automatically attempting to restart the engine—please wait 10 seconds and try your request again."
-                else:
-                    clean_reply += "\n\n(WhatsApp error: " + err + ")"
+    # ── Follow-up tracker & activity recording ────────────────────────────────
+    await memory_tracker.update_status_from_reply_async(raw_last_msg, user_id)
+    try:
+        from proactive_worker import _record_last_activity
+        await _record_last_activity(user_id)
+    except Exception:
+        pass
 
-    clean_reply, email_data = parse_tag(clean_reply, "EMAIL_SEND")
-    if email_data:
-        try:
-            target, target_error = await resolve_email_target_async(user_id, email_data.get("to", ""))
-            if not target:
-                clean_reply += "\n\n(" + (target_error or "Email recipient could not be resolved.") + ")"
-                return {"reply": clean_reply, "pending_command": None}
-            sent = send_email(
-                to=target,
-                subject=email_data.get("subject"),
-                body=email_data.get("body"),
-                user_id=user_id,
-            )
-            if not sent:
-                clean_reply += "\n\n(Email could not be sent — check your email account in Settings.)"
-        except Exception as e:
-            print("Email error: " + str(e))
-            clean_reply += "\n\n(Email could not be sent — check your email account in Settings.)"
+    final_reply = plan_result.reply
 
-    clean_reply, app_data = parse_tag(clean_reply, "OPEN_APP")
-    if app_data and is_explicit_app_launch_request(last_msg):
-        open_app(app_data.get("app"))
-
-    clean_reply, note_data = parse_tag(clean_reply, "SAVE_NOTE")
-    if note_data:
-        await save_note_async(note_data.get("content", ""), user_id)
-
-    clean_reply, reminder_data = parse_tag(clean_reply, "SET_REMINDER")
-    if reminder_data:
-        set_reminder(
-            message=reminder_data.get("message", ""),
-            minutes=int(reminder_data.get("minutes", 5))
+    # ── Follow-through: append natural next-step suggestion if LLM didn't ────
+    # Only when no HITL gate is pending (user needs to approve first)
+    if not plan_result.pending_hitl:
+        final_reply = _maybe_append_followthrough(
+            final_reply, plan_result.results, raw_last_msg, memory, _task_count
         )
 
-    clean_reply, spotify_data = parse_tag(clean_reply, "SPOTIFY")
-    if spotify_data:
-        action = spotify_data.get("action")
-        query = spotify_data.get("query", "")
-        if action == "volume":
-            set_spotify_volume(int(spotify_data.get("level", 50)))
-        elif action == "play" and query:
-            play_song(query)
-        else:
-            spotify_command(action)
-
-    clean_reply, vol_data = parse_tag(clean_reply, "MAC_VOLUME")
-    if vol_data:
-        set_volume(int(vol_data.get("level", 50)))
-
-    clean_reply, lock_data = parse_tag(clean_reply, "MAC_LOCK")
-    if lock_data is not None:
-        lock_mac()
-
-    clean_reply, sleep_data = parse_tag(clean_reply, "MAC_SLEEP")
-    if sleep_data is not None:
-        sleep_mac()
-
-    clean_reply, term_data = parse_tag(clean_reply, "RUN_TERMINAL")
-    pending_cmd = None
-    if term_data:
-        cmd = term_data.get("command")
-        if cmd:
-            pending_cmd = cmd
-            # We no longer execute here. We return it for the user to approve.
-            clean_reply += "\n\n(I've prepared a terminal command for this. Please approve it on your dashboard.)"
-
-    clean_reply, web_search_data = parse_tag(clean_reply, "WEB_SEARCH")
-    if web_search_data:
-        query = web_search_data.get("query", "")
-        engine = web_search_data.get("engine", "free")
-        if query:
-            loop = asyncio.get_event_loop()
-            import os
-            if engine == "tavily" and os.getenv("TAVILY_API_KEY"):
-                def _do_tavily_search():
-                    from tavily import TavilyClient
-                    client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
-                    # qna_search gives a highly synthesized short answer, perfect for specific QNs
-                    return client.qna_search(query=query)
-                try:
-                    results = await loop.run_in_executor(None, _do_tavily_search)
-                except Exception:
-                    results = await loop.run_in_executor(None, web_search, query)
-            else:
-                results = await loop.run_in_executor(None, web_search, query)
-            def _call_groq_search():
-                return client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": "You are Alfred. Use the search results to answer the user's latest query accurately and concisely (2 sentences max). Be direct and conversational."},
-                        {"role": "user", "content": f"User's request: {raw_last_msg}\n\nSearch Results for '{query}':\n{results}"}
-                    ],
-                    temperature=0.7,
-                )
-            followup = await loop.run_in_executor(None, _call_groq_search)
-            clean_reply = followup.choices[0].message.content
-
-    # ── Status update: check if user is responding to a follow-up Alfred sent ──
-    await memory_tracker.update_status_from_reply_async(raw_last_msg, user_id)
-
-    # Append tracker confirmation to reply if Alfred stored something new
     if _tracker_confirmation:
-        clean_reply = clean_reply + "\n\n" + _tracker_confirmation
+        final_reply = final_reply + "\n\n" + _tracker_confirmation
 
     return {
-        "reply": clean_reply,
-        "pending_command": pending_cmd,
-        "pending_pptx_topic": pending_pptx_topic,
+        "reply": final_reply,
+        "pending_command": plan_result.pending_command,
+        "pending_pptx_topic": plan_result.pending_pptx_topic,
+        "pending_hitl": plan_result.pending_hitl,
     }

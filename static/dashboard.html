@@ -2823,39 +2823,61 @@
             user's mailbox.</div>
         </div>
         <div style="display:grid;gap:10px">
-          <input type="email" id="emailIntegrationAddress" class="add-input" placeholder="you@company.com"
-            autocomplete="email" />
-          <input type="password" id="emailIntegrationPassword" class="add-input"
-            placeholder="Email password or app password" autocomplete="new-password" />
-          <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">For Gmail or Google Workspace,
-            use an App Password. For other providers, add the mail server below if needed.</div>
-          <details
-            style="border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,0.03)">
-            <summary style="cursor:pointer;font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Advanced
-              mail server settings</summary>
-            <div style="display:grid;gap:10px;margin-top:12px">
-              <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
-                <input type="text" id="emailIntegrationSmtpHost" class="add-input" placeholder="SMTP host"
-                  autocomplete="off" />
-                <input type="number" id="emailIntegrationSmtpPort" class="add-input" placeholder="Port" min="1"
-                  max="65535" />
-              </div>
-              <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
-                <input type="text" id="emailIntegrationImapHost" class="add-input" placeholder="IMAP host"
-                  autocomplete="off" />
-                <input type="number" id="emailIntegrationImapPort" class="add-input" placeholder="Port" min="1"
-                  max="65535" />
-              </div>
-              <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Leave these blank for Gmail
-                or Google Workspace.</div>
+          <!-- Gmail OAuth: connected state -->
+          <div id="settingsGmailOAuthConnected" style="display:none;display:grid;gap:8px;padding:12px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:12px">
+            <div id="settingsGmailOAuthStatusText" style="font-size:13px;color:var(--text-1);font-family:var(--font-mono)">Connected via Google</div>
+            <button class="btn btn-light" style="justify-content:center" onclick="disconnectGmailOAuth('settings')">Disconnect Google Account</button>
+          </div>
+          <!-- Gmail OAuth: connect button (shown when OAuth available but not yet connected) -->
+          <div id="settingsGmailOAuthConnect" style="display:none;display:grid;gap:8px">
+            <button id="settingsConnectGoogleBtn" class="btn btn-dark" style="justify-content:center;gap:8px" onclick="connectGmailOAuth('settings')">
+              <svg width="16" height="16" viewBox="0 0 18 18" style="flex-shrink:0"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.712A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.33z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+              Connect Gmail with Google
+            </button>
+            <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);text-align:center">No app password needed — sign in with your Google account</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:1px;background:var(--border)"></div>
+              <span style="font-size:11px;color:var(--text-2);font-family:var(--font-mono);white-space:nowrap">or connect another email provider</span>
+              <div style="flex:1;height:1px;background:var(--border)"></div>
             </div>
-          </details>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button id="settingsSaveEmailBtn" class="btn btn-dark" style="flex:1;min-width:140px;justify-content:center"
-              onclick="saveEmailIntegration('settings')">Save Email</button>
-            <button id="settingsDisconnectEmailBtn" class="btn btn-light"
-              style="flex:1;min-width:140px;justify-content:center"
-              onclick="disconnectEmailIntegration('settings')">Disconnect</button>
+          </div>
+          <!-- Manual email form (hidden when connected via Gmail OAuth) -->
+          <div id="settingsEmailManualForm">
+            <div style="display:grid;gap:10px">
+              <input type="email" id="emailIntegrationAddress" class="add-input" placeholder="you@company.com"
+                autocomplete="email" />
+              <input type="password" id="emailIntegrationPassword" class="add-input"
+                placeholder="Email password or app password" autocomplete="new-password" />
+              <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">For other providers, add the mail server below if needed.</div>
+              <details
+                style="border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,0.03)">
+                <summary style="cursor:pointer;font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Advanced
+                  mail server settings</summary>
+                <div style="display:grid;gap:10px;margin-top:12px">
+                  <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                    <input type="text" id="emailIntegrationSmtpHost" class="add-input" placeholder="SMTP host"
+                      autocomplete="off" />
+                    <input type="number" id="emailIntegrationSmtpPort" class="add-input" placeholder="Port" min="1"
+                      max="65535" />
+                  </div>
+                  <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                    <input type="text" id="emailIntegrationImapHost" class="add-input" placeholder="IMAP host"
+                      autocomplete="off" />
+                    <input type="number" id="emailIntegrationImapPort" class="add-input" placeholder="Port" min="1"
+                      max="65535" />
+                  </div>
+                  <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Leave these blank for Gmail
+                    or Google Workspace.</div>
+                </div>
+              </details>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button id="settingsSaveEmailBtn" class="btn btn-dark" style="flex:1;min-width:140px;justify-content:center"
+                  onclick="saveEmailIntegration('settings')">Save Email</button>
+                <button id="settingsDisconnectEmailBtn" class="btn btn-light"
+                  style="flex:1;min-width:140px;justify-content:center"
+                  onclick="disconnectEmailIntegration('settings')">Disconnect</button>
+              </div>
+            </div>
           </div>
           <div id="emailIntegrationStatus" style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Email
             not connected.</div>
@@ -3169,38 +3191,60 @@
           <div class="onboarding-card-sub">Save the user's email account so Alfred can send prompt-driven emails from
             that mailbox.</div>
           <div style="display:grid;gap:10px">
-            <input type="email" id="onboardingEmailIntegrationAddress" class="add-input" placeholder="you@company.com"
-              autocomplete="email" />
-            <input type="password" id="onboardingEmailIntegrationPassword" class="add-input"
-              placeholder="Email password or app password" autocomplete="new-password" />
-            <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">For Gmail or Google Workspace,
-              use an App Password. Add custom mail servers below only if your provider needs them.</div>
-            <details
-              style="border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,0.03)">
-              <summary style="cursor:pointer;font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Advanced
-                mail server settings</summary>
-              <div style="display:grid;gap:10px;margin-top:12px">
-                <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
-                  <input type="text" id="onboardingEmailIntegrationSmtpHost" class="add-input" placeholder="SMTP host"
-                    autocomplete="off" />
-                  <input type="number" id="onboardingEmailIntegrationSmtpPort" class="add-input" placeholder="Port"
-                    min="1" max="65535" />
-                </div>
-                <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
-                  <input type="text" id="onboardingEmailIntegrationImapHost" class="add-input" placeholder="IMAP host"
-                    autocomplete="off" />
-                  <input type="number" id="onboardingEmailIntegrationImapPort" class="add-input" placeholder="Port"
-                    min="1" max="65535" />
-                </div>
-                <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Leave these blank for Gmail
-                  or Google Workspace.</div>
+            <!-- Gmail OAuth: connected state -->
+            <div id="onboardingGmailOAuthConnected" style="display:none;display:grid;gap:8px;padding:12px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:12px">
+              <div id="onboardingGmailOAuthStatusText" style="font-size:13px;color:var(--text-1);font-family:var(--font-mono)">Connected via Google</div>
+              <button class="btn btn-light" style="justify-content:center" onclick="disconnectGmailOAuth('onboarding')">Disconnect Google Account</button>
+            </div>
+            <!-- Gmail OAuth: connect button -->
+            <div id="onboardingGmailOAuthConnect" style="display:none;display:grid;gap:8px">
+              <button id="onboardingConnectGoogleBtn" class="btn btn-dark" style="justify-content:center;gap:8px" onclick="connectGmailOAuth('onboarding')">
+                <svg width="16" height="16" viewBox="0 0 18 18" style="flex-shrink:0"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.712A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.33z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+                Connect Gmail with Google
+              </button>
+              <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono);text-align:center">No app password needed — sign in with your Google account</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex:1;height:1px;background:var(--border)"></div>
+                <span style="font-size:11px;color:var(--text-2);font-family:var(--font-mono);white-space:nowrap">or connect another email provider</span>
+                <div style="flex:1;height:1px;background:var(--border)"></div>
               </div>
-            </details>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button id="onboardingSaveEmailBtn" class="btn btn-dark" style="flex:1;justify-content:center"
-                onclick="saveEmailIntegration('onboarding')">Save Email</button>
-              <button id="onboardingDisconnectEmailBtn" class="btn btn-light" style="flex:1;justify-content:center"
-                onclick="disconnectEmailIntegration('onboarding')">Disconnect</button>
+            </div>
+            <!-- Manual email form (hidden when connected via Gmail OAuth) -->
+            <div id="onboardingEmailManualForm">
+              <div style="display:grid;gap:10px">
+                <input type="email" id="onboardingEmailIntegrationAddress" class="add-input" placeholder="you@company.com"
+                  autocomplete="email" />
+                <input type="password" id="onboardingEmailIntegrationPassword" class="add-input"
+                  placeholder="Email password or app password" autocomplete="new-password" />
+                <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">For other providers, add custom mail servers below only if needed.</div>
+                <details
+                  style="border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:rgba(255,255,255,0.03)">
+                  <summary style="cursor:pointer;font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Advanced
+                    mail server settings</summary>
+                  <div style="display:grid;gap:10px;margin-top:12px">
+                    <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                      <input type="text" id="onboardingEmailIntegrationSmtpHost" class="add-input" placeholder="SMTP host"
+                        autocomplete="off" />
+                      <input type="number" id="onboardingEmailIntegrationSmtpPort" class="add-input" placeholder="Port"
+                        min="1" max="65535" />
+                    </div>
+                    <div style="display:grid;grid-template-columns:minmax(0,2fr) 110px;gap:8px">
+                      <input type="text" id="onboardingEmailIntegrationImapHost" class="add-input" placeholder="IMAP host"
+                        autocomplete="off" />
+                      <input type="number" id="onboardingEmailIntegrationImapPort" class="add-input" placeholder="Port"
+                        min="1" max="65535" />
+                    </div>
+                    <div style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Leave these blank for Gmail
+                      or Google Workspace.</div>
+                  </div>
+                </details>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button id="onboardingSaveEmailBtn" class="btn btn-dark" style="flex:1;justify-content:center"
+                    onclick="saveEmailIntegration('onboarding')">Save Email</button>
+                  <button id="onboardingDisconnectEmailBtn" class="btn btn-light" style="flex:1;justify-content:center"
+                    onclick="disconnectEmailIntegration('onboarding')">Disconnect</button>
+                </div>
+              </div>
             </div>
             <div id="onboardingEmailIntegrationStatus"
               style="font-size:12px;color:var(--text-2);font-family:var(--font-mono)">Email not connected.</div>
@@ -3505,6 +3549,18 @@
         const data = await me.json();
         if (data.ok === false) throw new Error('Not authenticated');
         setSignedInState(data.name);
+
+        // Handle Gmail OAuth callback URL params
+        const _params = new URLSearchParams(window.location.search);
+        if (_params.get('gmail_connected') === '1') {
+          const _gmailEmail = _params.get('gmail_email') || '';
+          showSettingsToast(_gmailEmail ? `Gmail connected: ${_gmailEmail}` : 'Gmail connected');
+          loadIntegrations();
+          window.history.replaceState({}, '', window.location.pathname);
+        } else if (_params.get('gmail_error')) {
+          showSettingsToast(`Gmail sign-in failed: ${_params.get('gmail_error')}`);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
 
         // Redirect to onboarding if needed
         if (data.needs_onboarding && !window.location.search.includes('skip_onboarding')) {
@@ -4168,6 +4224,10 @@
           imapHost: document.getElementById('onboardingEmailIntegrationImapHost'),
           imapPort: document.getElementById('onboardingEmailIntegrationImapPort'),
           emailStatus: document.getElementById('onboardingEmailIntegrationStatus'),
+          emailManualForm: document.getElementById('onboardingEmailManualForm'),
+          gmailOAuthConnect: document.getElementById('onboardingGmailOAuthConnect'),
+          gmailOAuthConnected: document.getElementById('onboardingGmailOAuthConnected'),
+          gmailOAuthStatusText: document.getElementById('onboardingGmailOAuthStatusText'),
           whatsappStatus: document.getElementById('onboardingWhatsAppIntegrationStatus'),
           qrWrap: document.getElementById('onboardingWhatsAppQrWrap'),
           qrImage: document.getElementById('onboardingWhatsAppQrImage'),
@@ -4181,6 +4241,10 @@
         imapHost: document.getElementById('emailIntegrationImapHost'),
         imapPort: document.getElementById('emailIntegrationImapPort'),
         emailStatus: document.getElementById('emailIntegrationStatus'),
+        emailManualForm: document.getElementById('settingsEmailManualForm'),
+        gmailOAuthConnect: document.getElementById('settingsGmailOAuthConnect'),
+        gmailOAuthConnected: document.getElementById('settingsGmailOAuthConnected'),
+        gmailOAuthStatusText: document.getElementById('settingsGmailOAuthStatusText'),
         whatsappStatus: document.getElementById('whatsAppIntegrationStatus'),
         qrWrap: document.getElementById('whatsAppQrWrap'),
         qrImage: document.getElementById('whatsAppQrImage'),
@@ -4194,9 +4258,21 @@
 
     function renderIntegrationScope(scope, data) {
       const email = data.email || {};
+      const gmail = data.gmail || {};
       const whatsapp = data.whatsapp || {};
       const nodes = getIntegrationNodes(scope);
       const whatsappConnected = Boolean(whatsapp.connected || whatsapp.ready);
+
+      // Gmail OAuth UI
+      const gmailConnected = Boolean(gmail.connected);
+      const oauthAvailable = Boolean(gmail.oauth_available);
+      if (nodes.gmailOAuthConnected) nodes.gmailOAuthConnected.style.display = gmailConnected ? '' : 'none';
+      if (nodes.gmailOAuthConnect) nodes.gmailOAuthConnect.style.display = (oauthAvailable && !gmailConnected) ? '' : 'none';
+      if (nodes.gmailOAuthStatusText && gmailConnected) {
+        nodes.gmailOAuthStatusText.textContent = `Connected via Google: ${gmail.email}`;
+      }
+      // Hide manual form when connected via Gmail OAuth
+      if (nodes.emailManualForm) nodes.emailManualForm.style.display = gmailConnected ? 'none' : '';
 
       if (Object.prototype.hasOwnProperty.call(email, 'connected') || Object.prototype.hasOwnProperty.call(email, 'address')) {
         if (nodes.emailAddress) nodes.emailAddress.value = email.address || '';
@@ -4206,9 +4282,13 @@
         if (nodes.imapHost) nodes.imapHost.value = email.imap_host || '';
         if (nodes.imapPort) nodes.imapPort.value = email.imap_port || '';
         if (nodes.emailStatus) {
-          nodes.emailStatus.textContent = email.connected
-            ? `Connected: ${email.address}`
-            : (email.last_error || 'Email not connected.');
+          if (gmailConnected) {
+            nodes.emailStatus.textContent = `Connected via Google: ${gmail.email}`;
+          } else {
+            nodes.emailStatus.textContent = email.connected
+              ? `Connected: ${email.address}`
+              : (email.last_error || gmail.last_error || 'Email not connected.');
+          }
         }
       }
 
@@ -4274,6 +4354,39 @@
           clearInterval(_whatsAppPollTimer);
         }
       }, 1000);
+    }
+
+    async function connectGmailOAuth(scope = 'settings') {
+      const button = scope === 'onboarding'
+        ? document.getElementById('onboardingConnectGoogleBtn')
+        : document.getElementById('settingsConnectGoogleBtn');
+      try {
+        setButtonBusy(button, true, 'Redirecting...');
+        const response = await apiFetch('/api/integrations/gmail/auth-url');
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || 'Could not start Gmail sign-in');
+        }
+        const { url } = await response.json();
+        window.location.href = url;
+      } catch (e) {
+        setButtonBusy(button, false);
+        notifyIntegration(scope, e.message || 'Could not start Gmail sign-in');
+      }
+    }
+
+    async function disconnectGmailOAuth(scope = 'settings') {
+      const nodes = getIntegrationNodes(scope);
+      try {
+        const response = await apiFetch('/api/integrations/gmail', { method: 'DELETE' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.detail || 'Could not disconnect Gmail');
+        if (nodes.emailStatus) nodes.emailStatus.textContent = 'Email not connected.';
+        notifyIntegration(scope, 'Gmail disconnected');
+        loadIntegrations();
+      } catch (e) {
+        notifyIntegration(scope, e.message || 'Could not disconnect Gmail');
+      }
     }
 
     async function saveEmailIntegration(scope = 'settings', provided = null) {
