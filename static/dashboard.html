@@ -608,16 +608,25 @@
     }
 
     .refresh {
-      background: transparent;
-      border: none;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
       cursor: pointer;
-      color: var(--text-3);
-      font-size: 14px;
-      transition: color 0.3s;
+      color: var(--text-2);
+      font-size: 13px;
+      padding: 6px 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s var(--ease-out);
     }
 
     .refresh:hover {
+      background: var(--surface);
       color: var(--red);
+      border-color: var(--red);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 0, 0, 0.15);
     }
 
     /* ── Widget Components ── */
@@ -4831,13 +4840,6 @@
         const _origRefreshAll = window.refreshAll;
         if (typeof _origRefreshAll === 'function') {
           window.refreshAll = function () {
-            refreshBtn.style.transition = 'transform 0.6s var(--ease-out)';
-            refreshBtn.style.transform = 'rotate(360deg)';
-            setTimeout(() => {
-              refreshBtn.style.transition = 'none';
-              refreshBtn.style.transform = 'rotate(0deg)';
-              setTimeout(() => { refreshBtn.style.transition = ''; }, 50);
-            }, 650);
             return _origRefreshAll.apply(this, arguments);
           };
         }
