@@ -44,7 +44,7 @@ logger = logging.getLogger("alfred.connectors.whatsapp")
 # Environment / config
 # ---------------------------------------------------------------------------
 
-BRIDGE_URL: str = os.getenv("WHATSAPP_BRIDGE_URL", "http://localhost:3000").rstrip("/")
+BRIDGE_URL: str = os.getenv("WHATSAPP_BRIDGE_URL", "http://127.0.0.1:3000").rstrip("/")
 BRIDGE_SCRIPT: str = os.path.join(os.path.dirname(__file__), "..", "whatsapp", "index.js")
 BRIDGE_LOG_PATH: str = os.getenv(
     "ALFRED_WHATSAPP_BRIDGE_LOG",

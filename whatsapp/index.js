@@ -99,7 +99,16 @@ async function createClient(sessionId = 'default') {
     authStrategy: new LocalAuth({ clientId: session.id }),
     puppeteer: {
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process', // Helps in low-mem environments
+        '--disable-gpu'
+      ]
     }
   });
 
