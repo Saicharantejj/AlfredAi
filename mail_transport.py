@@ -10,7 +10,7 @@ def imap_uses_ssl(port: int) -> bool:
     return int(port) == 993
 
 
-def open_smtp_connection(host: str, port: int, *, timeout: float = 10.0):
+def open_smtp_connection(host: str, port: int, *, timeout: float = 30.0):
     if smtp_uses_ssl(port):
         return smtplib.SMTP_SSL(host, int(port), timeout=timeout)
 

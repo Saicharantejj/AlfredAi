@@ -19,7 +19,7 @@ INTEGRATIONS_KEY_PATH = os.getenv(
     str(BASE_DIR / "users" / ".integrations.key"),
 )
 DEFAULT_EMAIL_SMTP_HOST = os.getenv("ALFRED_DEFAULT_SMTP_HOST", "smtp.gmail.com").strip().lower()
-DEFAULT_EMAIL_SMTP_PORT = int(os.getenv("ALFRED_DEFAULT_SMTP_PORT", "465"))
+DEFAULT_EMAIL_SMTP_PORT = int(os.getenv("ALFRED_DEFAULT_SMTP_PORT", "587"))
 DEFAULT_EMAIL_IMAP_HOST = os.getenv("ALFRED_DEFAULT_IMAP_HOST", "imap.gmail.com").strip().lower()
 DEFAULT_EMAIL_IMAP_PORT = int(os.getenv("ALFRED_DEFAULT_IMAP_PORT", "993"))
 
