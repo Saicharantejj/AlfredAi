@@ -1896,10 +1896,31 @@
         if (entry.isIntersecting) {
           const numEl = entry.target.querySelector('.stat-num');
           const val = numEl.textContent;
-          const numeric = parseInt(val);
-          const suffix = val.replace(/[0-9]/g, '');
-          numEl.textContent = '0';
-          setTimeout(() => countUp(numEl, numeric, suffix), 100);
+          // Robust numeric extraction: find the first number in the string
+          const match = val.match(/(\d+)/);
+          if (match) {
+            const numeric = parseInt(match[0]);
+            const parts = val.split(match[0]);
+            const prefix = parts[0] || '';
+            const suffix = parts[1] || '';
+            
+            numEl.textContent = prefix + '0' + suffix;
+            
+            // Re-bind countUp to handle prefix + animated number + suffix
+            const countUpWithAffix = (el, targetValue, pre, suf) => {
+              const start = performance.now();
+              const duration = 1500;
+              const step = (now) => {
+                const progress = Math.min((now - start) / duration, 1);
+                const ease = 1 - Math.pow(1 - progress, 3);
+                el.textContent = pre + Math.floor(ease * targetValue) + suf;
+                if (progress < 1) requestAnimationFrame(step);
+              };
+              requestAnimationFrame(step);
+            };
+            
+            setTimeout(() => countUpWithAffix(numEl, numeric, prefix, suffix), 100);
+          }
           statsObserver.unobserve(entry.target);
         }
       });
