@@ -290,6 +290,26 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
     system += "\n\n" + time_context
     system += "\n\nCurrent mode: " + get_current_mode()
 
+    # ── Live Task & Note Awareness ──
+    try:
+        from tasks import load_tasks_async
+        from notes import get_notes_async
+        tasks = await load_tasks_async(user_id)
+        pending_tasks = [t for t in tasks if not t.get("done", False)]
+        if pending_tasks:
+            system += "\n\nPending Tasks:\n- " + "\n- ".join([t.get("text", "") for t in pending_tasks[:10]])
+            if len(pending_tasks) > 10:
+                system += f"\n...and {len(pending_tasks) - 10} more."
+        
+        notes = await get_notes_async(user_id)
+        if notes:
+            # Inject only the 3 most recent notes to save context
+            recent_notes = notes[-3:] if isinstance(notes, list) else []
+            if recent_notes:
+                system += "\n\nRecent Notes:\n- " + "\n- ".join([n.get("content", "")[:120] for n in recent_notes])
+    except Exception as e:
+        logger.error("Failed to inject live context: %s", e)
+
     # ── Memory extraction: silently detect & store events/tasks the user mentions ──
     raw_user_msg = messages[-1]["content"].strip() if messages else ""
     _tracker_confirmation = await memory_tracker.extract_and_store_async(raw_user_msg, user_id)

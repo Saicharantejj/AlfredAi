@@ -375,8 +375,9 @@ async def extract_and_store_async(user_message: str, user_id: str) -> Optional[s
     if not detected_type:
         return None
 
-    # Must have a time anchor to be worth tracking (no point following up if no deadline)
-    if not _has_time_anchor(user_message):
+    # For events, we still require a time anchor to be worth tracking.
+    # For tasks, we allow it to be stored without a time if the intent is clear.
+    if detected_type == "event" and not _has_time_anchor(user_message):
         return None
 
     content = _extract_short_content(user_message, detected_type)
@@ -413,6 +414,15 @@ async def extract_and_store_async(user_message: str, user_id: str) -> Optional[s
     }
     items.append(new_item)
     await _save(user_id, items)
+
+    # ── Dashboard Sync ──
+    # If it's a task, add it to the main dashboard list (tasks.json) as well
+    if detected_type == "task":
+        try:
+            from tasks import add_task_async
+            await add_task_async(content, user_id)
+        except Exception as te:
+            logger.error("Failed to sync auto-extracted task to tasks.json: %s", te)
 
     confirmation = (
         f"Got it, I'll check in on your {content} after it's due."
