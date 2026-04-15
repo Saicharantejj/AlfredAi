@@ -77,25 +77,6 @@
       .deep-red-wash { animation: none !important; }
     }
 
-    /* ── Hero watermark 'A' ── */
-    .hero-watermark {
-      position: absolute;
-      right: -5%;
-      top: 50%;
-      transform: translateY(-50%);
-      font-family: var(--font-serif);
-      font-size: clamp(300px, 40vw, 600px);
-      font-weight: 700;
-      color: transparent;
-      background: linear-gradient(180deg, rgba(255,0,0,0.08) 0%, rgba(255,0,0,0.02) 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      pointer-events: none;
-      user-select: none;
-      line-height: 0.85;
-      z-index: 0;
-    }
-
     /* ── Section separators ── */
     .section-divider {
       width: 100%;
@@ -781,7 +762,6 @@
       
       .hero-h1 { line-height: 1.1; font-size: clamp(38px, 12vw, 64px); letter-spacing: -0.02em; }
       .hero-subtitle { font-size: 16px; padding: 0 10px; margin-bottom: 32px; }
-      .hero-watermark { display: none; }
       
       nav { 
         padding: 12px 5%; 
@@ -952,7 +932,6 @@
   <main>
     <!-- HERO: The Command Center -->
     <section class="hero container">
-      <div class="hero-watermark">A</div>
       <h1 class="hero-h1">Your assistant for<br>getting things done.</h1>
       <p class="hero-subtitle">Not just answers. Alfred connects to your tools and executes actions for you, straight from chat.</p>
       
