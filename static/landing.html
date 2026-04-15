@@ -56,10 +56,126 @@
     .deep-red-wash {
       position: fixed; inset: 0;
       background:
-        linear-gradient(180deg, rgba(35,0,0,0.75) 0%, rgba(20,0,0,0.6) 40%, transparent 70%),
-        linear-gradient(0deg, rgba(25,0,0,0.8) 0%, transparent 50%);
+        linear-gradient(180deg, rgba(60,0,0,0.75) 0%, rgba(20,0,0,0.5) 40%, transparent 70%),
+        linear-gradient(0deg, rgba(40,0,0,0.7) 0%, transparent 50%);
       pointer-events: none;
       z-index: -2;
+    }
+
+    /* ── Hero watermark 'A' ── */
+    .hero-watermark {
+      position: absolute;
+      right: -5%;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-serif);
+      font-size: clamp(300px, 40vw, 600px);
+      font-weight: 700;
+      color: transparent;
+      background: linear-gradient(180deg, rgba(255,0,0,0.08) 0%, rgba(255,0,0,0.02) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      pointer-events: none;
+      user-select: none;
+      line-height: 0.85;
+      z-index: 0;
+    }
+
+    /* ── Section separators ── */
+    .section-divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,0,0,0.3), rgba(255,0,0,0.6), rgba(255,0,0,0.3), transparent);
+      margin: 80px auto;
+      position: relative;
+    }
+    .section-divider::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(255,0,0,0.6), 0 0 24px rgba(255,0,0,0.3);
+    }
+
+    /* ── Stats counter bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin: 60px 0 80px;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 32px 20px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      transition: border-color 0.3s ease, transform 0.3s var(--ease-fluid);
+    }
+    .stat-item:hover {
+      border-color: rgba(255,0,0,0.3);
+      transform: translateY(-4px);
+    }
+    .stat-num {
+      font-family: var(--font-serif);
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 8px;
+    }
+
+    /* ── Footer ── */
+    .site-footer {
+      text-align: center;
+      padding: 60px 0 40px;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+    .footer-logo {
+      font-family: var(--font-serif);
+      font-size: 28px;
+      font-style: italic;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .footer-tagline {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 24px;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--accent); }
+    .footer-copy {
+      font-size: 11px;
+      color: var(--text-dark);
+      font-family: var(--font-mono);
     }
 
     body::after {
@@ -208,17 +324,19 @@
     .command-interface {
       width: 100%;
       max-width: 800px;
-      background: rgba(10,10,10,0.75);
-      border: 1px solid var(--border);
+      background: rgba(10,10,10,0.8);
+      border: 1px solid rgba(255,0,0,0.15);
       border-radius: 24px;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 24px 60px rgba(255,0,0,0.12);
+      box-shadow:
+        0 24px 60px rgba(255,0,0,0.15),
+        0 0 0 1px rgba(255,0,0,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.04);
       overflow: hidden;
       opacity: 0;
       animation: revealUp 0.7s var(--ease-fluid) 0.2s forwards;
       position: relative;
-      /* No will-change here: it forces a GPU layer even before any animation */
       transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
@@ -337,11 +455,13 @@
       position: relative;
     }
     .visual-glasspane {
-      /* Remove backdrop-filter + box-shadow here to avoid stacked compositing layers */
-      background: rgba(22,22,22,0.85);
-      border: 1px solid var(--border);
+      background: rgba(12,5,5,0.85);
+      border: 1px solid rgba(255,0,0,0.1);
       border-radius: 24px;
       padding: 40px;
+      box-shadow:
+        0 20px 50px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .mock-message {
@@ -368,9 +488,14 @@
     }
     .cta-glow {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 100vw; height: 50vh;
-      background: radial-gradient(circle, rgba(255,0,0,0.2) 0%, transparent 50%);
-      filter: blur(100px); opacity: 1; z-index: -1;
+      width: 120vw; height: 60vh;
+      background: radial-gradient(ellipse, rgba(255,0,0,0.3) 0%, rgba(200,0,0,0.1) 40%, transparent 65%);
+      filter: blur(80px); opacity: 1; z-index: -1;
+      animation: ctaPulse 6s ease-in-out infinite;
+    }
+    @keyframes ctaPulse {
+      0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
     }
 
     /* ── Capability Grid ── */
@@ -388,9 +513,13 @@
       background: rgba(255,255,255,0.02);
       border-right: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
-      transition: background 0.25s ease;
+      transition: background 0.3s ease, transform 0.3s var(--ease-fluid), box-shadow 0.3s ease;
     }
-    .cap-cell:hover { background: rgba(255,80,0,0.06); }
+    .cap-cell:hover {
+      background: rgba(255,20,0,0.06);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(255,0,0,0.08);
+    }
     /* Full-width feature cell for the bottom row standout items */
     .cap-cell-wide {
       grid-column: 1 / -1;
@@ -557,6 +686,7 @@
       .story-block { flex-direction: column; align-items: flex-start; gap: 40px; }
       .story-content, .story-visual { width: 100%; padding-right: 0; }
       .hero-h1 { line-height: 1.1; font-size: clamp(40px, 12vw, 80px); }
+      .hero-watermark { display: none; }
       nav { padding: 16px 5%; }
       .cap-grid { grid-template-columns: 1fr; gap: 8px; }
       .cap-cell-wide { flex-direction: column; align-items: flex-start; gap: 24px; padding: 24px; }
@@ -568,6 +698,8 @@
       .nav-actions .btn-solid { padding: 10px 16px; font-size: 12px; }
       .nav-logo { font-size: 20px; }
       .trust-bar { gap: 20px; }
+      .stats-bar { grid-template-columns: 1fr; gap: 16px; }
+      .section-divider { margin: 50px auto; }
     }
     /* ══════════════════════════════════════════
        MICRO-ANIMATION SYSTEM — living interface
@@ -682,6 +814,7 @@
   <main>
     <!-- HERO: The Command Center -->
     <section class="hero container">
+      <div class="hero-watermark">A</div>
       <h1 class="hero-h1">Your assistant for<br>getting things done.</h1>
       <p class="hero-subtitle">Not just answers. Alfred connects to your tools and executes actions for you, straight from chat.</p>
       
@@ -703,6 +836,26 @@
         </div>
       </div>
     </section>
+
+    <!-- STATS BAR -->
+    <section class="container">
+      <div class="stats-bar">
+        <div class="stat-item">
+          <div class="stat-num" data-target="11">11</div>
+          <div class="stat-label">Integrations</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-target="0">&lt;1s</div>
+          <div class="stat-label">Response time</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-target="100">100%</div>
+          <div class="stat-label">Self-hosted</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container"><div class="section-divider"></div></div>
 
     <!-- ABOUT SECTION -->
     <section class="container" style="padding-top: 120px; padding-bottom: 40px;">
@@ -951,6 +1104,8 @@
       </div>
     </section>
 
+    <div class="container"><div class="section-divider"></div></div>
+
     <!-- EXTRA STORIES: 9–11 -->
     <section class="story-section container" style="padding-top: 60px;">
 
@@ -1179,6 +1334,17 @@
         <button class="btn-solid" onclick="openAuth('signup')">Start using Alfred</button>
       </div>
     </section>
+
+    <!-- FOOTER -->
+    <footer class="site-footer container">
+      <div class="footer-logo">Alfred.</div>
+      <div class="footer-tagline">Your Personal AI Operating System</div>
+      <div class="footer-links">
+        <a href="#" onclick="openAuth('signup'); return false;">Get Started</a>
+        <a href="#" onclick="openAuth('login'); return false;">Sign In</a>
+      </div>
+      <div class="footer-copy">© 2026 Alfred AI. Crafted with precision.</div>
+    </footer>
 
   </main>
 
