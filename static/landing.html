@@ -52,23 +52,6 @@
       pointer-events: none;
     }
 
-    /* Immersive Grainy Texture overlay */
-    .grain-overlay {
-      position: fixed; inset: 0;
-      z-index: 1000;
-      pointer-events: none;
-      opacity: 0.15;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-      animation: noiseAnim 0.2s steps(4) infinite;
-    }
-    @keyframes noiseAnim {
-      0% { transform: translate(0,0); }
-      25% { transform: translate(-1%, -1%); }
-      50% { transform: translate(1%, 1%); }
-      75% { transform: translate(-1%, 1%); }
-      100% { transform: translate(1%, -1%); }
-    }
-
     /* Animated deep red wash — 'Liquid' light effect */
     .deep-red-wash {
       position: fixed; inset: 0;
@@ -88,11 +71,10 @@
       100% { transform: scale(1.2) translate(0.5%, -1%); }
     }
     @media (max-width: 768px) {
-      .grain-overlay { opacity: 0.08; } /* Lighter grain on mobile to reduce jitter */
       .deep-red-wash { filter: blur(40px); animation-duration: 30s; } /* Simpler/slower for mobile GPU */
     }
     @media (prefers-reduced-motion: reduce) {
-      .grain-overlay, .deep-red-wash { animation: none !important; }
+      .deep-red-wash { animation: none !important; }
     }
 
     /* ── Hero watermark 'A' ── */
@@ -955,8 +937,6 @@
       <div style="position:absolute; top:0; left:0; height:100%; width:100%; background:var(--accent); transform:scaleX(0); transform-origin:left; animation:bootProgress 0.6s var(--ease-fluid) forwards;"></div>
     </div>
   </div>
-  
-  <div class="grain-overlay"></div>
   <div class="dot-grid-bg"></div>
   <div class="deep-red-wash"></div>
   <div class="ambient-glow"></div>
