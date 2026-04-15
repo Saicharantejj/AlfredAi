@@ -3,11 +3,17 @@
 # Ensure PORT is defined (Railway provides this)
 APP_PORT="${PORT:-8080}"
 
-# Start the WhatsApp bridge in the background
-# We must pass the correct URL so the bridge can notify Alfred
-echo "📱 Starting WhatsApp Bridge on port 3000..."
-cd /app/whatsapp
-ALFRED_API_URL="http://127.0.0.1:$APP_PORT" WHATSAPP_BRIDGE_PORT=3000 node index.js &
+# Start the WhatsApp bridge with an auto-restart loop
+# If it crashes (e.g. OOM), it will reboot automatically
+echo "📱 Starting WhatsApp Bridge on port 3000 (with auto-restart)..."
+(
+    cd /app/whatsapp
+    while true; do
+        ALFRED_API_URL="http://127.0.0.1:$APP_PORT" WHATSAPP_BRIDGE_PORT=3000 node index.js
+        echo "⚠️ WhatsApp Bridge exited. Restarting in 5s..."
+        sleep 5
+    done
+) &
 NODE_PID=$!
 
 # Go back to /app

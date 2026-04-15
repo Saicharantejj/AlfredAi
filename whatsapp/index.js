@@ -106,8 +106,12 @@ async function createClient(sessionId = 'default') {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process', // Helps in low-mem environments
-        '--disable-gpu'
+        '--single-process',
+        '--disable-gpu',
+        '--disable-extensions',
+        '--disable-default-apps',
+        '--mute-audio',
+        '--hide-scrollbars'
       ]
     }
   });

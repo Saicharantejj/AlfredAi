@@ -781,8 +781,9 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
                 )
                 if not sent:
                     err = message or ""
-                    if "detached Frame" in err or "context" in err.lower() or "503" in err or "connection lost" in err.lower():
-                        clean_reply += "\n\nWhatsApp connection dropped. Go to Settings → WhatsApp and hit Refresh to reconnect, then try again."
+                    is_crash = any(x in err.lower() for x in ["detached frame", "context", "503", "connection lost", "crash"])
+                    if is_crash:
+                        clean_reply += "\n\nWhatsApp connection dropped. I'm automatically attempting to restart the engine—please wait 10 seconds and try your request again."
                     else:
                         clean_reply += "\n\n(" + err + ")"
                 else:
