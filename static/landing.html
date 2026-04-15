@@ -61,6 +61,23 @@
       pointer-events: none;
       z-index: -2;
     }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.12; /* Slightly higher for dark bg */
+      background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAApb3L0AAAABlBMVEUAAAD///+l2Z/dAAAAbUlEQVR4XqXPSQ7AIAwEwfH9j96mY6LIVfIP9A5E2X0Z6p9ZzTOSnGY5z3KRRRZZZJFFlllmWWSZp2WZZZaFFllkkUWWWWZZZJlllllllVWWWWZZZJlllllllVWWWWRZZJFlXpZlllkWWWaZZZZZ5is97wL128+Y+AAAAABJRU5ErkJggg==");
+      background-repeat: repeat;
+      background-size: 50px 50px;
+    }
+
+    @media (max-width: 1024px) {
+      .command-interface { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+      .modal-overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    }
     /* Ambient glow: stronger red, larger footprint */
     .ambient-glow {
       position: fixed;

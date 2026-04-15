@@ -63,6 +63,24 @@
     --shadow-sm: 0 4px 16px rgba(255, 0, 0, 0.15);
   }
 
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.045;
+    background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAApb3L0AAAABlBMVEUAAAD///+l2Z/dAAAAbUlEQVR4XqXPSQ7AIAwEwfH9j96mY6LIVfIP9A5E2X0Z6p9ZzTOSnGY5z3KRRRZZZJFFlllmWWSZp2WZZZaFFllkkUWWWWZZZJlllllllVWWWWZZZJlllllllVWWWWRZZJFlXpZlllkWWWaZZZZZ5is97wL128+Y+AAAAABJRU5ErkJggg==");
+    background-repeat: repeat;
+    background-size: 50px 50px;
+  }
+
+  @media (max-width: 1024px) {
+    .header { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .input-wrap { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    .msg-bubble { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  }
+
   html, body {
     height: 100%;
     background: var(--bg);
@@ -794,7 +812,7 @@ function animateGravityField(now){
   requestAnimationFrame(animateGravityField);
 }
 
-if(!prefersReducedMotion){
+if(!prefersReducedMotion && window.innerWidth > 1024){
   document.addEventListener('mousemove',e=>{
     fieldTarget.x=e.clientX;fieldTarget.y=e.clientY;
   });
@@ -805,6 +823,8 @@ if(!prefersReducedMotion){
   requestAnimationFrame(animateGravityField);
 }else{
   setMotionField(fieldTarget.x,fieldTarget.y);
+  // Still run field animations but without mouse tracking if not on desktop
+  if (!prefersReducedMotion) requestAnimationFrame(animateGravityField);
 }
 
 /* ── File helpers ── */

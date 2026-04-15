@@ -62,18 +62,16 @@
       --shadow-lg: 0 24px 64px rgba(0, 0, 0, 1);
     }
 
-    /* Grain Texture Overlay */
     body::after {
       content: "";
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      inset: 0;
       pointer-events: none;
       z-index: 1000;
-      opacity: 0.03;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      opacity: 0.045;
+      background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAApb3L0AAAABlBMVEUAAAD///+l2Z/dAAAAbUlEQVR4XqXPSQ7AIAwEwfH9j96mY6LIVfIP9A5E2X0Z6p9ZzTOSnGY5z3KRRRZZZJFFlllmWWSZp2WZZZaFFllkkUWWWWZZZJlllllllVWWWWZZZJlllllllVWWWWRZZJFlXpZlllkWWWaZZZZZ5is97wL128+Y+AAAAABJRU5ErkJggg==");
+      background-repeat: repeat;
+      background-size: 50px 50px;
     }
 
     html {
@@ -257,6 +255,22 @@
       max-width: 1400px;
       width: calc(100% - 48px);
       transition: all 0.5s var(--ease-out);
+    }
+
+    /* ── Performance Optimizations ── */
+    @media (max-width: 1024px) {
+      :root {
+        --shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.2);
+      }
+      .top { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+      .card { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+      .orb { display: none !important; } /* Hide heavy orbs on mobile */
+      .spline-bg { display: none !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .orb, .gravity-blob, .welcome-name { animation: none !important; transition: none !important; }
     }
 
     [data-theme="dark"] .top {
@@ -2252,8 +2266,6 @@
     .login-modal .btn-light {
       border-color: rgba(255, 255, 255, 0.15);
       color: #ffffff;
-    }
-
     /* Auth setup box inside login modal */
     .auth-setup-box {
       border-color: rgba(255, 255, 255, 0.08) !important;
@@ -2269,9 +2281,18 @@
 
 <body>
 
-  <div class="spline-bg">
-    <spline-viewer url="https://prod.spline.design/kZ6uCthOcaCHhtw3/scene.splinecode"></spline-viewer>
-  </div>
+  <div id="splineContainer" class="spline-bg"></div>
+  <script>
+    if (window.innerWidth > 1024) {
+      document.write('<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js"><\/script>');
+      window.addEventListener('load', () => {
+        const container = document.getElementById('splineContainer');
+        const spline = document.createElement('spline-viewer');
+        spline.setAttribute('url', 'https://prod.spline.design/kZ6uCthOcaCHhtw3/scene.splinecode');
+        container.appendChild(spline);
+      });
+    }
+  </script>
 
   <!-- Page-enter wipe overlay -->
   <div id="pageOverlay"></div>
