@@ -83,9 +83,13 @@
     }
     @keyframes liquidBg {
       0% { transform: scale(1.1) translate(0,0); }
-      33% { transform: scale(1.2) translate(2%, 3%); }
-      66% { transform: scale(1.15) translate(-2%, 2%); }
-      100% { transform: scale(1.2) translate(1%, -2%); }
+      33% { transform: scale(1.2) translate(1%, 2%); }
+      66% { transform: scale(1.15) translate(-1%, 1%); }
+      100% { transform: scale(1.2) translate(0.5%, -1%); }
+    }
+    @media (max-width: 768px) {
+      .grain-overlay { opacity: 0.08; } /* Lighter grain on mobile to reduce jitter */
+      .deep-red-wash { filter: blur(40px); animation-duration: 30s; } /* Simpler/slower for mobile GPU */
     }
     @media (prefers-reduced-motion: reduce) {
       .grain-overlay, .deep-red-wash { animation: none !important; }
@@ -772,26 +776,58 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     @media (max-width: 768px) {
-      .story-block { flex-direction: column; align-items: flex-start; gap: 40px; }
-      .story-content, .story-visual { width: 100%; padding-right: 0; }
-      .hero-h1 { line-height: 1.1; font-size: clamp(40px, 12vw, 80px); }
+      .story-section { padding: 80px 0; }
+      .story-block { flex-direction: column; align-items: flex-start; gap: 40px; padding: 20px 0; }
+      .story-content, .story-visual { width: 100%; padding-right: 0 !important; padding-left: 0 !important; }
+      .story-h2 { font-size: 32px; line-height: 1.2; margin-top: 12px; }
+      .story-p { font-size: 16px; line-height: 1.6; }
+      
+      .hero-h1 { line-height: 1.1; font-size: clamp(38px, 12vw, 64px); letter-spacing: -0.02em; }
+      .hero-subtitle { font-size: 16px; padding: 0 10px; margin-bottom: 32px; }
       .hero-watermark { display: none; }
-      nav { padding: 16px 5%; }
+      
+      nav { 
+        padding: 12px 5%; 
+        background: rgba(3,3,3,0.8);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+        mix-blend-mode: normal; /* Better contrast for glass bg */
+      }
+      
       /* Reset bento grid to single column on mobile */
-      .cap-grid { grid-template-columns: 1fr; gap: 12px; }
+      .cap-grid { grid-template-columns: 1fr; gap: 16px; margin-top: 40px; }
       .bento-1x1, .bento-2x1, .bento-1x2, .bento-2x2 { grid-column: span 1 !important; grid-row: span 1 !important; }
+      .cap-cell { padding: 24px; min-height: 240px; }
       
       .cap-cell-wide { flex-direction: column; align-items: flex-start; gap: 24px; padding: 24px; }
-      .cap-cell-wide .cap-wide-visual { width: 100%; }
-      .comparison-strip { grid-template-columns: 1fr; gap: 40px; padding: 32px; }
-      .cmp-divider { width: 100%; height: 1px; }
-      .cmd-input { font-size: 18px; }
-      .cmd-body { padding: 24px; }
-      .nav-actions .btn-solid { padding: 10px 16px; font-size: 12px; }
+      .cap-cell-wide .cap-wide-visual { width: 100%; margin-top: 12px; }
+      
+      .comparison-strip { grid-template-columns: 1fr; gap: 40px; padding: 24px; }
+      .cmp-divider { width: 100%; height: 1px; margin: 8px 0; }
+      .cmp-side { text-align: left !important; align-items: flex-start !important; }
+      .cmp-item { flex-direction: row !important; text-align: left; font-size: 14px; }
+      
+      .cta-section { padding: 100px 5%; }
+      .cta-section .hero-h1 { font-size: 40px; margin-bottom: 16px; }
+
+      .cmd-interface { transform: scale(0.95); margin: 0 -10px; }
+      .cmd-input { font-size: 17px; }
+      .cmd-body { padding: 24px 20px; min-height: 180px; }
+      
+      .nav-actions .btn-solid { padding: 8px 16px; font-size: 12px; }
       .nav-logo { font-size: 20px; }
-      .trust-bar { gap: 20px; text-align: center; }
-      .stats-bar { grid-template-columns: 1fr; gap: 16px; }
-      .section-divider { margin: 50px auto; }
+      
+      .trust-bar { 
+        flex-direction: column;
+        gap: 16px; 
+        text-align: center;
+        padding: 40px 20px;
+      }
+      .trust-item { font-size: 14px; width: 100%; justify-content: center; }
+      .section-divider { margin: 40px auto; width: 80%; }
+      
+      .visual-glasspane { padding: 20px; }
     }
     /* ══════════════════════════════════════════
        MICRO-ANIMATION SYSTEM — living interface
