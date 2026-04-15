@@ -51,9 +51,9 @@
     }
 
     [data-theme="dark"] {
-      --bg: #0a0505;
-      --surface: rgba(18, 18, 18, 0.7);
-      --border: rgba(255, 255, 255, 0.05);
+      --bg: #030000;
+      --surface: rgba(18, 5, 5, 0.75);
+      --border: rgba(255, 0, 0, 0.12);
       --text: #ffffff;
       --text-2: #888888;
       --text-3: #555555;
@@ -124,11 +124,30 @@
       pointer-events: none;
       z-index: -1;
       background:
-        radial-gradient(circle at var(--field-x, 50%) var(--field-y, 50%), hsla(0, 95%, 65%, 0.1), transparent 30%),
-        radial-gradient(circle at var(--field-x2, 60%) var(--field-y2, 40%), hsla(340, 100%, 65%, 0.08), transparent 25%),
-        radial-gradient(circle at calc(var(--field-x, 50%) - 15%) calc(var(--field-y, 50%) + 10%), hsla(10, 90%, 70%, 0.07), transparent 28%);
-      opacity: 0.7;
+        radial-gradient(circle at var(--field-x, 50%) var(--field-y, 50%), hsla(0, 95%, 55%, 0.18), transparent 35%),
+        radial-gradient(circle at var(--field-x2, 60%) var(--field-y2, 40%), hsla(340, 100%, 55%, 0.15), transparent 30%),
+        radial-gradient(circle at calc(var(--field-x, 50%) - 15%) calc(var(--field-y, 50%) + 10%), hsla(10, 90%, 60%, 0.12), transparent 32%);
+      opacity: 0.85;
       transition: opacity 1s var(--ease-out);
+    }
+
+    /* ── Deeper Red Wash ────────────────────────────────────────────────── */
+    .deep-red-wash {
+      position: fixed; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(80,0,0,0.3) 0%, rgba(20,0,0,0.1) 40%, transparent 80%),
+        linear-gradient(0deg, rgba(40,0,0,0.2) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: -2;
+    }
+
+    .dot-grid-bg {
+      position: fixed; inset: 0;
+      z-index: -3;
+      background-image: radial-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      opacity: 0.5;
     }
 
     .gravity-layer {
@@ -152,21 +171,21 @@
     }
 
     .gravity-blob.one {
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, hsla(0, 95%, 68%, 0.34) 0%, hsla(0, 95%, 68%, 0.08) 55%, transparent 74%);
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, hsla(0, 95%, 60%, 0.45) 0%, hsla(0, 95%, 60%, 0.1) 55%, transparent 74%);
     }
 
     .gravity-blob.two {
-      width: 260px;
-      height: 260px;
-      background: radial-gradient(circle, hsla(350, 88%, 65%, 0.28) 0%, hsla(350, 88%, 65%, 0.08) 56%, transparent 76%);
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, hsla(350, 88%, 55%, 0.35) 0%, hsla(350, 88%, 55%, 0.1) 56%, transparent 76%);
     }
 
     .gravity-blob.three {
-      width: 230px;
-      height: 230px;
-      background: radial-gradient(circle, hsla(330, 100%, 66%, 0.24) 0%, hsla(330, 100%, 66%, 0.07) 52%, transparent 74%);
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, hsla(330, 100%, 55%, 0.3) 0%, hsla(330, 100%, 55%, 0.1) 52%, transparent 74%);
     }
 
     .gravity-blob.four {
@@ -2280,6 +2299,8 @@
 </head>
 
 <body>
+  <div class="dot-grid-bg"></div>
+  <div class="deep-red-wash"></div>
 
   <div id="splineContainer" class="spline-bg"></div>
   <script>

@@ -60,7 +60,16 @@
     --accent-blue: #409eff;
     --agent-bubble: rgba(255, 255, 255, 0.05);
     --user-bg: linear-gradient(135deg, #ff1100, #c40e00);
-    --shadow-sm: 0 4px 16px rgba(255, 0, 0, 0.15);
+    --shadow-sm: 0 4px 16px rgba(255, 0, 0, 0.22);
+  }
+
+  .deep-red-wash {
+    position: fixed; inset: 0;
+    background:
+      linear-gradient(180deg, rgba(70,0,0,0.2) 0%, rgba(20,0,0,0.08) 40%, transparent 80%),
+      linear-gradient(0deg, rgba(30,0,0,0.1) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: -2;
   }
 
   body::after {
@@ -108,10 +117,10 @@
     pointer-events: none;
     z-index: -1;
     background:
-      radial-gradient(circle at var(--field-x, 50%) var(--field-y, 50%), hsla(0, 95%, 65%, 0.12), transparent 30%),
-      radial-gradient(circle at var(--field-x2, 60%) var(--field-y2, 40%), hsla(340, 100%, 65%, 0.1), transparent 25%),
-      radial-gradient(circle at calc(var(--field-x, 50%) - 15%) calc(var(--field-y, 50%) + 10%), hsla(15, 90%, 70%, 0.08), transparent 28%);
-    opacity: 0.7;
+      radial-gradient(circle at var(--field-x, 50%) var(--field-y, 50%), hsla(0, 95%, 55%, 0.18), transparent 35%),
+      radial-gradient(circle at var(--field-x2, 60%) var(--field-y2, 40%), hsla(340, 100%, 55%, 0.14), transparent 30%),
+      radial-gradient(circle at calc(var(--field-x, 50%) - 15%) calc(var(--field-y, 50%) + 10%), hsla(15, 90%, 60%, 0.1), transparent 32%);
+    opacity: 0.8;
     transition: opacity 1s var(--ease-out);
   }
 
@@ -582,6 +591,7 @@ textarea::placeholder{color:var(--text-tertiary)}
 </style>
 </head>
 <body>
+  <div class="deep-red-wash"></div>
 <div class="layout">
 
 <div class="header">
