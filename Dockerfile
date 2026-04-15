@@ -28,8 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1 \
     libgbm1 \
     libgcc1 \
-    libgconf-2-4 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-2.0-0 \
     libglib2.0-0 \
     libgtk-3-0 \
     libnspr4 \
