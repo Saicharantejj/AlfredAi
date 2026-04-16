@@ -1,0 +1,88 @@
+{
+  "name": "alfred",
+  "version": "1.0.0",
+  "description": "Alfred — Personal Intelligence",
+  "main": "main.js",
+  "scripts": {
+    "start":      "electron .",
+    "dev":        "electron . --dev",
+    "build:mac":  "electron-builder --mac",
+    "build:win":  "electron-builder --win",
+    "build:all":  "electron-builder --mac --win"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron":         "^29.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId":       "com.alfred.app",
+    "productName": "Alfred",
+    "copyright":   "Copyright © 2025 Alfred",
+
+    "directories": {
+      "output": "../dist-electron"
+    },
+
+    "extraResources": [
+      {
+        "from": "../",
+        "to":   "backend",
+        "filter": [
+          "static/**",
+          "users/**",
+          "whatsapp/index.js",
+          "whatsapp/package.json",
+          "whatsapp/node_modules/**",
+          ".env.template"
+        ]
+      },
+      {
+        "from": "../dist-python/alfred-backend",
+        "to":   "backend/alfred-backend"
+      }
+    ],
+
+    "mac": {
+      "category":     "public.app-category.productivity",
+      "icon":         "icons/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ]
+    },
+
+    "dmg": {
+      "title":      "Alfred",
+      "background": "icons/dmg-background.png",
+      "window":     { "width": 540, "height": 380 },
+      "contents": [
+        { "x": 130, "y": 190, "type": "file"    },
+        { "x": 410, "y": 190, "type": "link", "path": "/Applications" }
+      ]
+    },
+
+    "win": {
+      "icon":   "icons/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+
+    "nsis": {
+      "oneClick":            false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon":       "icons/icon.ico",
+      "uninstallerIcon":     "icons/icon.ico",
+      "installerHeaderIcon": "icons/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName":        "Alfred"
+    },
+
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
