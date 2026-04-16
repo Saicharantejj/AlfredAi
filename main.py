@@ -1156,7 +1156,8 @@ def gmail_auth_url(current_user: User = Depends(get_current_user), request: Requ
             status_code=501,
             detail="Gmail OAuth is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.",
         )
-    redirect_uri = str(request.base_url).rstrip("/") + "/api/integrations/gmail/callback"
+    _base = os.getenv("ALFRED_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+    redirect_uri = _base + "/api/integrations/gmail/callback"
     url = gmail_connector.get_auth_url(current_user.storage_id, redirect_uri=redirect_uri)
     return {"url": url}
 
@@ -1201,7 +1202,8 @@ async def gmail_oauth_callback(
     if not storage_id:
         raise HTTPException(status_code=400, detail="OAuth state mismatch. Try connecting again.")
 
-    redirect_uri = str(request.base_url).rstrip("/") + "/api/integrations/gmail/callback"
+    _base = os.getenv("ALFRED_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+    redirect_uri = _base + "/api/integrations/gmail/callback"
     try:
         result = gmail_connector.handle_callback(
             storage_id,
@@ -2682,6 +2684,64 @@ async def admin_set_premium(data: AdminPremiumRequest):
         raise HTTPException(status_code=404, detail="User not found.")
     await set_is_premium_async(data.email, data.is_premium)
     return {"ok": True, "email": data.email, "is_premium": data.is_premium}
+
+
+# ---------------------------------------------------------------------------
+# Gmail Access Requests
+# ---------------------------------------------------------------------------
+
+GMAIL_ACCESS_REQUESTS_FILE = os.path.join(os.path.dirname(__file__), "users", "gmail_access_requests.json")
+
+def _load_gmail_access_requests() -> list:
+    try:
+        with open(GMAIL_ACCESS_REQUESTS_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+def _save_gmail_access_requests(requests: list) -> None:
+    os.makedirs(os.path.dirname(GMAIL_ACCESS_REQUESTS_FILE), exist_ok=True)
+    with open(GMAIL_ACCESS_REQUESTS_FILE, "w") as f:
+        json.dump(requests, f, indent=2)
+
+
+@app.post("/api/request-gmail-access")
+async def request_gmail_access(current_user: User = Depends(get_current_user)):
+    """User-facing: logs a request for Gmail OAuth access so admins can add the user as a test user."""
+    requests = _load_gmail_access_requests()
+
+    # Avoid duplicate requests from same user
+    already_requested = any(r.get("email") == current_user.email for r in requests)
+    if not already_requested:
+        requests.append({
+            "email": current_user.email,
+            "name": current_user.name,
+            "requested_at": datetime.utcnow().isoformat() + "Z",
+        })
+        _save_gmail_access_requests(requests)
+        logger.info("Gmail access requested by %s (%s)", current_user.email, current_user.name)
+
+        # Optional: fire a webhook notification (set ADMIN_NOTIFY_WEBHOOK in env)
+        webhook_url = os.getenv("ADMIN_NOTIFY_WEBHOOK")
+        if webhook_url:
+            try:
+                async with httpx.AsyncClient(timeout=5) as client:
+                    await client.post(webhook_url, json={
+                        "text": f"📧 Gmail access requested by {current_user.name} ({current_user.email})"
+                    })
+            except Exception:
+                pass  # Notification failure is non-fatal
+
+    return {"ok": True, "already_requested": already_requested}
+
+
+@app.get("/api/admin/gmail-access-requests")
+async def admin_gmail_access_requests(admin_secret: str):
+    """Admin endpoint to view all Gmail access requests. Requires ALFRED_ADMIN_SECRET query param."""
+    if admin_secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid admin secret.")
+    requests = _load_gmail_access_requests()
+    return {"requests": requests, "count": len(requests)}
 
 
 # ---------------------------------------------------------------------------
