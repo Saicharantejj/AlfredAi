@@ -1,6 +1,9 @@
 import re
+import logging
 from typing import Union, Optional, List, Dict, Any, Tuple, Literal
 from groq import Groq
+
+logger = logging.getLogger("alfred")
 from dotenv import load_dotenv
 from memory import get_memory_context_async, update_memory_async, load_memory_async
 from email_handler import send_email
