@@ -8,6 +8,12 @@ const sessions = new Map();
 const BRIDGE_HOST = process.env.WHATSAPP_BRIDGE_HOST || '127.0.0.1';
 const BRIDGE_PORT = Number.parseInt(process.env.WHATSAPP_BRIDGE_PORT || '3000', 10);
 
+// WA_SESSION_PATH lets you point session storage at a persistent volume
+// (e.g. a Railway Volume mounted at /data/wa-sessions).
+// If unset, whatsapp-web.js defaults to .wwebjs_auth/ in cwd — which is
+// wiped on every container restart, causing the "always logs out" problem.
+const WA_SESSION_PATH = process.env.WA_SESSION_PATH || null;
+
 /**
  * Universal retry wrapper for Puppeteer/whatsapp-web.js operations.
  * Specifically handles 'detached Frame' and 'Execution context was destroyed' errors
@@ -96,7 +102,10 @@ async function createClient(sessionId = 'default') {
   session.qr = null;
 
   const client = new Client({
-    authStrategy: new LocalAuth({ clientId: session.id }),
+    authStrategy: new LocalAuth({
+      clientId: session.id,
+      ...(WA_SESSION_PATH ? { dataPath: WA_SESSION_PATH } : {}),
+    }),
     puppeteer: {
       headless: true,
       // Use the system Chromium installed in the Dockerfile
@@ -212,7 +221,8 @@ async function destroySession(sessionId = 'default') {
   session && (session.initializePromise = null);
   sessions.delete(id);
 
-  const authDir = path.join(process.cwd(), '.wwebjs_auth', `session-${id}`);
+  const authBase = WA_SESSION_PATH || path.join(process.cwd(), '.wwebjs_auth');
+  const authDir = path.join(authBase, `session-${id}`);
   const cacheDir = path.join(process.cwd(), '.wwebjs_cache');
   fs.rmSync(authDir, { recursive: true, force: true });
   fs.rmSync(path.join(cacheDir, id), { recursive: true, force: true });
