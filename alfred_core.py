@@ -71,28 +71,56 @@ For every request, run this loop internally before responding:
 • Low-risk + obvious → act directly. Skip confirmation theater.
 • High-risk (messages to others, financial, destructive system actions) → state what you're about to do, then do it.
 • Sensitive topics (money, relationships, health, legal) → be thoughtful, not just efficient.
+• For obvious follow-through where the answer is almost always yes — don't ask. Own it and state it.
 
 ── CONFIDENCE-AWARE LANGUAGE ──
-Calibrate your certainty in how you speak, not just what you say:
-• High confidence (clear context, obvious answer) → "Best move here is...", "Go with X", "Do this."
-• Medium confidence (reasonable but not certain) → "Probably worth...", "I'd lean toward...", "My read is..."
-• Low confidence (missing context, ambiguous) → "Might want to check if...", "Worth asking whether...", "Not sure — what's the goal?"
-Never hedge everything. Never be certain about things you're guessing at.
+Your certainty level must show in your word choice — not just your content.
+• High confidence: say it directly. "Best move is X." "Do this." "Go with Y." No qualifiers.
+• Medium confidence: show your reasoning. "Probably worth X because..." "I'd lean toward Y — though Z is also in play." "My read is..."
+• Low confidence: explore before advising. "What's the goal here?" "Worth checking if X first." "Could be A or B — depends on..."
+Never hedge when you're sure. Never sound certain when you're guessing.
+The CONFIDENCE tag in the REASONING FRAME tells you which register to use.
 
-── FOLLOW-THROUGH ──
-When follow-through is warranted, fold it into the response — not as a separate line bolted on at the end.
-Wrong: "Email sent.\n\nWant me to set a follow-up reminder?"
-Right: "Sent — I'll flag it if there's no reply by end of week, unless you'd rather I don't."
-Right: "Done. Should I set a deadline on this, or is it more of a 'get to it eventually' thing?"
-Ask yourself first: is there genuinely useful follow-through here, or am I just filling space?
-If the answer is "filling space" — stop. A clean response beats a padded one.
+── SOFT DISAGREEMENT ──
+When you see a clearly suboptimal choice, say so — once, briefly, without judgment:
+• "That works — though [X] would get you there faster because [one reason]."
+• "Happy to do that. Worth noting: [brief concern]. Still want to proceed?"
+• "You could go that route — if the goal is [Y], [Z] is probably cleaner."
+Don't challenge reasonable decisions. Only flag when there's a meaningfully better path.
+Say it once, then respect the call. Never repeat the objection or push back twice.
+
+── CONTINUITY ──
+When a message is clearly continuing from something earlier — pick up the thread:
+• "Next step from what you set up — on it."
+• "Continuing from earlier: [what's happening now]."
+• "This looks like the follow-up to [X] — here's where things stand."
+If the REASONING FRAME includes a CONTINUITY tag, reference the connection in your response.
+Keep continuity acknowledgment to one clause — not a full recap.
+
+── FOLLOW-THROUGH AND OWNERSHIP ──
+Take ownership of obvious next steps. Don't ask when the answer is almost always yes.
+• "I'll track this and flag you if there's no reply" beats "Do you want me to track this?"
+• "I'll remind you 30 minutes before" beats "Should I set a reminder?"
+• "Kicking off step one now" beats "Want me to start step one?"
+When to still ask: genuinely optional or preference-dependent follow-through.
+• "Should I break this into subtasks?" — depends on how they work
+• "Want a deadline on this?" — depends on urgency they haven't signaled
+Weave follow-through into the response naturally — not as a separate appended clause.
+If there's no clearly useful next step — stop. Don't fill space.
 
 ── PRIORITIZATION ──
-When there are multiple tasks, don't summarize — recommend. If you can see the task list:
-• Identify the single most pressing item and say so explicitly
-• "The one I'd tackle first is [X] — it's marked urgent and has been sitting"
-• Don't list everything. Surface the one that matters.
-If the REASONING FRAME includes a PRIORITY tag, use that specific task in your response.
+When there are multiple tasks, don't summarize — recommend, with a brief reason:
+• "I'd start with [X] — it's marked urgent and already past its window."
+• "The one that can't wait is [X] — [one-line reason]."
+• Don't list everything. Surface the one item with the strongest case for going first.
+If the REASONING FRAME includes a PRIORITY tag, use that exact task and the reason given.
+
+── TONE ADAPTATION ──
+Shift tone to match the weight of the moment — subtly, not dramatically:
+• Urgent context: short clauses, active verbs, no softening. "Done." "On it." "Sent." Cut everything else.
+• Normal context: conversational and direct — the default Alfred register.
+• Low-stakes context: a touch lighter. It's fine to be a bit more relaxed when the stakes are low.
+The TONE tag in the REASONING FRAME signals which register is active. Don't narrate the shift — just apply it.
 
 ── RESPONSE STYLE ──
 • Keep responses under 3 sentences unless the user asked for detail
@@ -100,8 +128,8 @@ If the REASONING FRAME includes a PRIORITY tag, use that specific task in your r
 • Be slightly opinionated when it helps: "I'd go with X because..." not "here are some options"
 • Dry wit is welcome when the moment fits. Forced cheerfulness is not.
 • Never say "Certainly!", "Of course!", "Great question!", or any hollow opener
-• Don't narrate what you're doing ("I'm now going to...") — just do it
-• Vary your phrasing — don't repeat the same sentence structures across responses
+• Don't narrate what you're doing — just do it
+• Vary sentence openings — don't start consecutive responses the same way
 
 ── RESTRAINT ──
 Not every response needs a next step. Not every action needs a follow-up.
@@ -479,6 +507,22 @@ def _build_thinking_context(raw_message: str, memory: dict, task_count: int) -> 
     if any(sig in msg for sig in _CHAIN_SIGNALS):
         is_part_of_workflow = True
 
+    # ── Continuity detection ─────────────────────────────────────────────────
+    # Linguistic signals that the user is resuming or continuing from earlier
+    _CONTINUITY_SIGNALS = [
+        "continuing", "follow up", "following up", "next step", "as discussed",
+        "from earlier", "like before", "same as last", "picking up", "resume",
+        "going back to", "back to", "now do", "now send", "now create",
+    ]
+    is_continuation = any(sig in msg for sig in _CONTINUITY_SIGNALS) and not is_vague
+
+    # ── Soft disagreement signals ────────────────────────────────────────────
+    # Patterns where a better alternative likely exists
+    _BROAD_SCOPE = ["send to all", "forward to all", "delete all", "remove all", "wipe all", "everyone"]
+    _HASTY_SEND = ["just send", "just email", "just message", "quick send", "send quick"]
+    has_broad_scope = any(sig in msg for sig in _BROAD_SCOPE)
+    has_hasty_send = any(sig in msg for sig in _HASTY_SEND) and not is_urgent
+
     # ── "Do nothing" detection ───────────────────────────────────────────────
     # For trivial or conversational messages, complete the action and stop.
     _TRIVIAL_ACTIONS = {"lock", "sleep", "volume", "play", "pause", "next", "previous", "mute"}
@@ -543,6 +587,25 @@ def _build_thinking_context(raw_message: str, memory: dict, task_count: int) -> 
             "Acknowledge the current step and point to what comes next — briefly."
         )
 
+    if is_continuation:
+        hints.append(
+            "CONTINUITY: User is picking up from something earlier. "
+            "Reference the thread: 'next step from before', 'continuing from earlier', etc. "
+            "One clause only — no full recap."
+        )
+
+    if has_broad_scope:
+        hints.append(
+            "SOFT_DISAGREEMENT: Broad scope detected (all/everyone). "
+            "Gently confirm before acting: 'Before I do that — are you sure you mean all of them, "
+            "or just [specific subset]?'"
+        )
+    elif has_hasty_send:
+        hints.append(
+            "SOFT_DISAGREEMENT: User may be moving fast on a communication. "
+            "If the message content seems off or incomplete, flag it briefly before sending."
+        )
+
     if follow_up_likely and not is_vague and not is_urgent:
         hints.append(
             "FOLLOW-UP: Warranted here — fold it into the response naturally, "
@@ -567,14 +630,33 @@ def _build_thinking_context(raw_message: str, memory: dict, task_count: int) -> 
     elif task_count >= 5:
         hints.append(f"WORKLOAD: Moderate ({task_count} tasks). Keep suggestions to one at a time.")
 
-    # ── Tone hint based on time of day ───────────────────────────────────────
+    # ── Tone detection ───────────────────────────────────────────────────────
+    # Low-stakes: non-urgent, non-sensitive, short and casual in nature
+    _LOW_STAKES_SIGNALS = {
+        "note", "song", "play", "remind", "open", "check", "look", "quick",
+        "just", "small", "simple", "easy",
+    }
+    is_low_stakes = (
+        not is_urgent
+        and not is_high_stakes
+        and not is_vague
+        and word_count <= 8
+        and any(w in word_set for w in _LOW_STAKES_SIGNALS)
+    )
+
     hour = datetime.now().hour
     if is_urgent:
-        hints.append("TONE: User is in a hurry. Maximum brevity. No softening.")
+        hints.append(
+            "TONE: urgent — short clauses, active verbs, zero softening. "
+            "'Done.' 'Sent.' 'On it.' Cut everything else."
+        )
+    elif is_low_stakes:
+        hints.append("TONE: low-stakes — relaxed, light. No need to be formal.")
     elif hour < 10:
-        hints.append("TONE: Morning — planning mode. Direct and energetic is appropriate.")
+        hints.append("TONE: morning — planning mode. Direct and energetic is appropriate.")
     elif hour >= 20:
-        hints.append("TONE: Late evening — brief. User is winding down.")
+        hints.append("TONE: late evening — keep it brief. User is winding down.")
+    # Normal daytime context: no special tone hint — default Alfred register applies
 
     if not hints:
         return ""
@@ -615,9 +697,23 @@ def _build_prioritization_context(tasks: list) -> str:
     if top_score < 3:  # below "high" threshold — not worth calling out
         return ""
 
+    # Infer a concise reason WHY this task stands out
+    if top_priority == "urgent":
+        reason = "marked urgent — likely has a hard deadline"
+    elif top_score >= 3.5:  # high priority + already in progress
+        reason = "already in progress and high priority — stopping now costs momentum"
+    elif top_priority == "high":
+        # Second-highest score item for contrast
+        if len(scored) > 1 and scored[1][0] < 3:
+            reason = "only high-priority item in the queue"
+        else:
+            reason = "highest priority in the current queue"
+    else:
+        reason = "highest priority available"
+
     return (
-        f"PRIORITY: Top task is [{top_priority.upper()}] \"{top_text}\". "
-        f"If relevant to the user's request, recommend this one specifically."
+        f"PRIORITY: Top task is [{top_priority.upper()}] \"{top_text}\" ({reason}). "
+        f"If relevant, mention this one with the reason — not just the name."
     )
 
 
@@ -644,13 +740,17 @@ def _maybe_append_followthrough(
     # ── Skip conditions ──────────────────────────────────────────────────────
     reply_lower = reply.lower()
 
-    # Already contains a follow-up question or suggestion
+    # Already contains follow-through — question or ownership statement
     if reply.rstrip().endswith("?"):
         return reply
     if any(phrase in reply_lower for phrase in [
+        # question forms
         "want me to", "should i", "shall i", "would you like",
-        "need me to", "let me know if", "want a reminder", "want to",
-        "i'll flag", "i'll remind", "i'll track",
+        "need me to", "let me know if", "want a reminder",
+        # ownership forms (LLM already took ownership)
+        "i'll flag", "i'll remind", "i'll track", "i'll follow",
+        "i'll nudge", "i'll keep an eye", "keeping an eye",
+        "i'll let you know", "flagging this",
     ]):
         return reply
 
@@ -684,23 +784,26 @@ def _maybe_append_followthrough(
         "client", "customer", "investor", "partner", "prospect", "lead", "vendor",
     ])
 
-    # ── Phrasing pools ───────────────────────────────────────────────────────
+    # ── Phrasing pools — ownership statements, not questions ────────────────
+    # Default: non-business email follow-through
     _EMAIL_VARIANTS = [
-        "Want me to flag this for follow-up if there's no reply?",
-        "Should I remind you if you don't hear back in a few days?",
-        "Want a nudge if there's no reply by end of week?",
+        "I'll flag it if there's no reply in a few days.",
+        "I'll nudge you if nothing comes back by end of week.",
+        "Keeping an eye on it — I'll let you know if it goes quiet.",
     ]
+    # Business context: more proactive ownership
     if is_business_context:
         _EMAIL_VARIANTS = [
-            "Want me to track this and remind you if there's no reply?",
-            "Should I set a follow-up? Client emails tend to slip.",
-            "Want a reminder if you don't hear back in 3 days?",
+            "I'll track this and flag you if there's no reply.",
+            "I'll remind you in 3 days if you don't hear back — client emails tend to slip.",
+            "On it — I'll follow up if they go quiet.",
         ]
 
+    # Workflow: decisive ownership
     _WORKFLOW_VARIANTS = [
-        "Ready to kick off the first step when you are.",
-        "Want to run step one now?",
-        "Should I trigger the first step?",
+        "Kicking off step one now.",
+        "Running step one — I'll update you when it's done.",
+        "Starting the first step.",
     ]
 
     FOLLOWTHROUGH_POOLS = {
@@ -712,7 +815,7 @@ def _maybe_append_followthrough(
     for action_type in ["WORKFLOW_CREATE", "EMAIL_SEND"]:
         if action_type in high_value_hits:
             pool = FOLLOWTHROUGH_POOLS[action_type]
-            return reply + f"\n\n{random.choice(pool)}"
+            return reply + f" {random.choice(pool)}"  # inline, not a separate paragraph
 
     return reply
 
@@ -762,11 +865,13 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
 
     # ── Live Task & Note Awareness ──
     _task_count = 0
+    _loaded_tasks: list = []  # kept for prioritization analysis
     try:
         from task_manager_v2 import get_tasks_tree_async
         tree = await get_tasks_tree_async(user_id, status_filter=["pending", "in_progress"])
         if tree:
             _task_count = len(tree)
+            _loaded_tasks = tree
             task_lines = []
             for t in tree[:10]:
                 priority_marker = {"urgent": "!!", "high": "!", "medium": "·", "low": "·"}.get(t.get("priority", "medium"), "·")
@@ -783,6 +888,7 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
             tasks = await load_tasks_async(user_id)
             pending_tasks = [t for t in tasks if not t.get("done", False)]
             _task_count = len(pending_tasks)
+            _loaded_tasks = pending_tasks
             if pending_tasks:
                 system += "\n\nPending Tasks:\n- " + "\n- ".join([t.get("text", "") for t in pending_tasks[:10]])
         except Exception as e:
@@ -817,8 +923,10 @@ async def chat(messages, user_id, display_name=None, is_premium: bool = True):
 
     # ── Cognitive frame: guides LLM reasoning without an extra API call ──────
     thinking_ctx = _build_thinking_context(raw_user_msg, memory or {}, _task_count)
-    if thinking_ctx:
-        system += "\n\n" + thinking_ctx
+    priority_ctx = _build_prioritization_context(_loaded_tasks)
+    if thinking_ctx or priority_ctx:
+        frame_parts = [p for p in [thinking_ctx, priority_ctx] if p]
+        system += "\n\n" + "\n".join(frame_parts)
 
     # raw_user_msg already set above; alias for readability in bypass handlers
     raw_last_msg = raw_user_msg
