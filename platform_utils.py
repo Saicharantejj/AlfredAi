@@ -27,15 +27,32 @@ def _run(command: List[str], *, check: bool = False, capture_output: bool = Fals
 
 def open_application(app_name: str) -> bool:
     try:
-        if IS_WINDOWS:
-            subprocess.Popen(["powershell", "-NoProfile", "-Command", f"Start-Process -FilePath '{_ps_quote(app_name)}'"])
-        elif IS_MAC:
+        if IS_MAC:
             subprocess.Popen(["open", "-a", app_name])
-        elif IS_LINUX:
-            subprocess.Popen(["xdg-open", app_name])
-        else:
+            return True
+
+        if IS_WINDOWS:
+            # Method 1: PowerShell Start-Process — works for most registered apps
+            try:
+                result = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command",
+                     f"Start-Process -FilePath '{_ps_quote(app_name)}'"],
+                    capture_output=True, timeout=5,
+                )
+                if result.returncode == 0:
+                    return True
+            except Exception:
+                pass
+            # Method 2: shell=True lets Windows resolve app names via PATH / App Paths registry
+            try:
+                subprocess.Popen(app_name, shell=True)
+                return True
+            except Exception:
+                pass
             return False
-        return True
+
+        # Linux / headless server — can't open GUI apps
+        return False
     except Exception:
         return False
 

@@ -59,16 +59,52 @@ def get_spotipy():
     return sp
 
 def spotify_command(action: str) -> str:
+    # ── 1. Spotify Web API (all platforms) ────────────────────────────────────
+    s = get_spotipy()
+    if s and s != "NEEDS_AUTH":
+        try:
+            if action in ["play", "pause"]:
+                cp = s.current_playback()
+                if cp and cp.get('is_playing'):
+                    s.pause_playback()
+                else:
+                    s.start_playback()
+                return f"Spotify: {action}"
+            elif action == "next":
+                s.next_track()
+                return "Spotify: next track"
+            elif action == "previous":
+                s.previous_track()
+                return "Spotify: previous track"
+        except Exception:
+            pass  # Fall through to OS-level controls
+
+    # ── 2. macOS — AppleScript ────────────────────────────────────────────────
+    if IS_MAC:
+        open_application('Spotify')
+        time.sleep(1)
+        commands = {
+            "play":     'tell application "Spotify" to play',
+            "pause":    'tell application "Spotify" to pause',
+            "next":     'tell application "Spotify" to next track',
+            "previous": 'tell application "Spotify" to previous track',
+        }
+        if action in commands:
+            result = subprocess.run(['osascript', '-e', commands[action]],
+                                    capture_output=True, text=True)
+            if result.returncode == 0:
+                return f"Spotify: {action}"
+        return "Unknown Spotify command"
+
+    # ── 3. Windows — media key events ────────────────────────────────────────
     if IS_WINDOWS:
-        # Avoid crashing if not started setup
         try:
             import ctypes
             hw = ctypes.windll.user32
-            VK_MEDIA_NEXT_TRACK = 0xB0
-            VK_MEDIA_PREV_TRACK = 0xB1
-            VK_MEDIA_PLAY_PAUSE = 0xB3
-            KEYEVENTF_KEYUP = 0x0002
-            
+            VK_MEDIA_NEXT_TRACK  = 0xB0
+            VK_MEDIA_PREV_TRACK  = 0xB1
+            VK_MEDIA_PLAY_PAUSE  = 0xB3
+            KEYEVENTF_KEYUP      = 0x0002
             if action in ["play", "pause"]:
                 hw.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0)
                 hw.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0)
@@ -78,55 +114,69 @@ def spotify_command(action: str) -> str:
             elif action == "previous":
                 hw.keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0)
                 hw.keybd_event(VK_MEDIA_PREV_TRACK, 0, KEYEVENTF_KEYUP, 0)
-            return f"Spotify Windows: {action}"
-        except:
-            return "Windows media control failed"
-    else:
-        # Open Spotify first if not running
-        open_application('Spotify')
-        time.sleep(2)
-        
-        commands = {
-            "play": 'tell application "Spotify" to play',
-            "pause": 'tell application "Spotify" to pause',
-            "next": 'tell application "Spotify" to next track',
-            "previous": 'tell application "Spotify" to previous track',
-        }
-        if action in commands:
-            subprocess.run(['osascript', '-e', commands[action]])
             return f"Spotify: {action}"
-        return "Unknown Spotify command"
+        except Exception:
+            return "Windows media control failed"
+
+    # ── 4. Linux/Railway without API ──────────────────────────────────────────
+    return (
+        "Spotify control requires SPOTIPY_CLIENT_ID and SPOTIPY_CLIENT_SECRET "
+        "to be set in your environment."
+    )
 
 def play_song(query: str) -> str:
     s = get_spotipy()
-    uri = None
-    
-    # Attempt to resolve URI via Spotipy if authenticated
+
+    # ── 1. Spotify Web API (works everywhere, actually auto-plays) ────────────
     if s and s != "NEEDS_AUTH":
         try:
             results = s.search(q=query, limit=1, type='track')
             if results and results['tracks']['items']:
-                uri = results['tracks']['items'][0]['uri']
-        except:
+                track = results['tracks']['items'][0]
+                uri = track['uri']
+                track_name = track['name']
+                artist = track['artists'][0]['name']
+
+                # Try to start playback on the user's active Spotify device
+                try:
+                    devices_resp = s.devices()
+                    devices = devices_resp.get('devices', []) if devices_resp else []
+                    active = next((d for d in devices if d.get('is_active')), None)
+                    device_id = active['id'] if active else (devices[0]['id'] if devices else None)
+                    s.start_playback(device_id=device_id, uris=[uri])
+                    return f"Now playing '{track_name}' by {artist} on Spotify ✓"
+                except Exception:
+                    pass
+
+                # API playback failed (no active device) — open URI directly.
+                # On macOS/Windows this launches Spotify and queues the track.
+                open_application('Spotify')
+                time.sleep(1)
+                open_uri(uri)
+                return f"Opening '{track_name}' by {artist} in Spotify"
+        except Exception:
             pass
 
-    if IS_WINDOWS:
-        if uri:
-            open_uri(uri)
-            return f"Playing {query} via Spotify (Windows)"
-        else:
-            clean_q = query.replace(" ", "%20")
-            open_uri(f"spotify:search:{clean_q}")
-            return f"Opening search for {query} (Windows)"
-    else:
+    # ── 2. macOS fallback (no API) — open app then load search ───────────────
+    if IS_MAC:
         open_application('Spotify')
-        time.sleep(2)
-        if uri:
-            script = f'tell application "Spotify" to play track "{uri}"'
-        else:
-            script = f'tell application "Spotify" to play track "spotify:search:{query}"'
-        subprocess.run(['osascript', '-e', script])
-        return f"Playing {query} on Spotify"
+        time.sleep(1.5)
+        clean_q = query.replace(' ', '%20')
+        open_uri(f"spotify:search:{clean_q}")
+        return f"Opened Spotify with results for '{query}' — tap the first track to play"
+
+    # ── 3. Windows fallback (no API) — URI scheme opens Spotify to search ────
+    if IS_WINDOWS:
+        clean_q = query.replace(' ', '%20')
+        open_uri(f"spotify:search:{clean_q}")
+        return f"Opened Spotify with results for '{query}' — tap the first track to play"
+
+    # ── 4. Linux/Railway without API — can't control desktop remotely ─────────
+    return (
+        "To control Spotify from Alfred on this server, add SPOTIPY_CLIENT_ID and "
+        "SPOTIPY_CLIENT_SECRET to your environment so Alfred can reach Spotify on "
+        "your device via the Web API."
+    )
 
 def set_spotify_volume(level: int) -> str:
     if IS_WINDOWS:
