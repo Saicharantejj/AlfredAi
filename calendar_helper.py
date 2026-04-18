@@ -65,7 +65,11 @@ def get_service():
             creds.refresh(Request())
         else:
             flow = _build_flow()
-            creds = flow.run_local_server(port=0)
+            # USE A FIXED PORT to avoid Error 104 (Connection Reset) or random blocking.
+            # Default to 9005. Make sure this is added to Authorized Redirect URIs in Google Console.
+            port = int(os.getenv("GOOGLE_CALENDAR_AUTH_PORT", 9005))
+            print(f"Starting Google Calendar auth server on http://localhost:{port}")
+            creds = flow.run_local_server(port=port, prompt="Alfred needs access to your Google Calendar. Please authorize here: ")
         _persist_token_if_configured(creds)
 
     return build("calendar", "v3", credentials=creds)

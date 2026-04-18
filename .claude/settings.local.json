@@ -4,7 +4,8 @@
       "Bash(ls /Users/saicharantej/alfred/*.py)",
       "Bash(python -c ':*)",
       "Bash(python3 -c ':*)",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('main.py OK'\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('main.py OK'\\)\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }

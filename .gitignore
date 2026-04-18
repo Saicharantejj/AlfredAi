@@ -29,3 +29,12 @@ alfred.log
 
 # OS
 .DS_Store
+
+# Build and node_modules
+dist/
+dist-electron/
+build/
+*.app/
+*.dmg/
+node_modules/
+**/node_modules/

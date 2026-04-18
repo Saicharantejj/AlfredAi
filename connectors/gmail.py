@@ -283,6 +283,7 @@ class GmailConnector(BaseConnector):
         current_state["_redirect_uri"] = redirect_uri
         self.save_state(user_id, current_state)
 
+        logger.info("Generated Gmail auth URL for %s with redirect_uri: %s", user_id, redirect_uri)
         return auth_url
 
     def handle_callback(

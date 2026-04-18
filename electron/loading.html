@@ -94,5 +94,25 @@
     <div class="dot"></div>
     <div class="dot"></div>
   </div>
+
+  <div id="status" style="margin-top:24px;font-size:11px;color:rgba(255,255,255,0.2);font-family:'SF Mono',monospace;letter-spacing:0.1em;">
+    Starting backend…
+  </div>
+
+  <script>
+    // Cycle through status messages so it feels alive
+    const messages = [
+      'Starting backend…',
+      'Loading modules…',
+      'Connecting services…',
+      'Almost ready…',
+    ];
+    let i = 0;
+    const el = document.getElementById('status');
+    setInterval(() => {
+      i = (i + 1) % messages.length;
+      el.textContent = messages[i];
+    }, 3000);
+  </script>
 </body>
 </html>

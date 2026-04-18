@@ -71,16 +71,20 @@ function makeLogStream(name) {
   return fs.createWriteStream(file, { flags: 'a' });
 }
 
-function waitForBackend(port, maxMs = 45000) {
+function waitForBackend(port, maxMs = 60000) {
   return new Promise((resolve) => {
     const deadline = Date.now() + maxMs;
+    let done = false;
     function attempt() {
-      if (Date.now() > deadline) { resolve(false); return; }
-      const req = http.get(`http://127.0.0.1:${port}/health`, (res) => {
-        resolve(res.statusCode < 500);
+      if (done) return;
+      if (Date.now() > deadline) { done = true; resolve(false); return; }
+      const req = http.get(`http://127.0.0.1:${port}/health/live`, (res) => {
+        if (done) return;
+        if (res.statusCode < 500) { done = true; resolve(true); }
+        else setTimeout(attempt, 600);
       });
-      req.on('error', () => setTimeout(attempt, 600));
-      req.setTimeout(1000, () => { req.destroy(); setTimeout(attempt, 600); });
+      req.on('error', () => { if (!done) setTimeout(attempt, 600); });
+      req.setTimeout(1500, () => { req.destroy(); if (!done) setTimeout(attempt, 600); });
     }
     attempt();
   });
@@ -119,11 +123,12 @@ async function startPython(port) {
     pythonProc = spawn(exe, ['--port', String(port)], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   }
 
-  pythonProc.stdout?.pipe(logStream);
-  pythonProc.stderr?.pipe(logStream);
+  // { end: false } stops pipe from closing the file stream when the process exits
+  pythonProc.stdout?.pipe(logStream, { end: false });
+  pythonProc.stderr?.pipe(logStream, { end: false });
 
   pythonProc.on('exit', (code) => {
-    logStream.write(`\n[Alfred] Python exited with code ${code}\n`);
+    try { logStream.write(`\n[Alfred] Python exited with code ${code}\n`); } catch (_) {}
   });
 }
 
@@ -151,12 +156,12 @@ function startWhatsAppBridge(alfredPort) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  waProc.stdout?.pipe(logStream);
-  waProc.stderr?.pipe(logStream);
+  waProc.stdout?.pipe(logStream, { end: false });
+  waProc.stderr?.pipe(logStream, { end: false });
 
   // Auto-restart if it crashes (same as entrypoint.sh)
   waProc.on('exit', (code) => {
-    logStream.write(`\n[Alfred] WhatsApp bridge exited (${code}), restarting in 5s…\n`);
+    try { logStream.write(`\n[Alfred] WhatsApp bridge exited (${code}), restarting in 5s…\n`); } catch (_) {}
     if (!app.isQuitting) setTimeout(() => startWhatsAppBridge(alfredPort), 5000);
   });
 }
@@ -166,6 +171,18 @@ function startWhatsAppBridge(alfredPort) {
 function killAll() {
   try { pythonProc?.kill(); } catch (_) {}
   try { waProc?.kill();     } catch (_) {}
+}
+
+// ─── Auth check ───────────────────────────────────────────────────────────────
+
+function checkAuth(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/api/auth/me`, (res) => {
+      resolve(res.statusCode === 200);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(3000, () => { req.destroy(); resolve(false); });
+  });
 }
 
 // ─── Create the app window ────────────────────────────────────────────────────
@@ -178,19 +195,52 @@ async function createWindow() {
     height:         860,
     minWidth:       900,
     minHeight:      600,
-    titleBarStyle:  IS_MAC ? 'hiddenInset' : 'default',
     backgroundColor: '#0a0404',
     webPreferences: {
       nodeIntegration:  false,
       contextIsolation: true,
+      webSecurity:      false,   // allows localhost requests without CORS issues
     },
     show:  false,
     title: 'Alfred',
-    icon:  path.join(__dirname, 'icons', IS_WIN ? 'icon.ico' : 'icon.png'),
+    icon:  path.join(__dirname, 'icons', IS_MAC ? 'icon.icns' : IS_WIN ? 'icon.ico' : 'icon.png'),
   });
 
-  // Remove default menu bar (looks cleaner)
-  Menu.setApplicationMenu(null);
+  // Set app name in menu bar
+  app.setName('Alfred');
+
+  // Clean minimal menu — just Alfred + hide/quit, no "Electron" anywhere
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'Alfred',
+      submenu: [
+        { label: 'About Alfred', role: 'about' },
+        { type: 'separator' },
+        { label: 'Hide Alfred',  role: 'hide' },
+        { label: 'Hide Others',  role: 'hideOthers' },
+        { type: 'separator' },
+        { label: 'Quit Alfred',  accelerator: 'Cmd+Q', role: 'quit' },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+        { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        ...(IS_DEV ? [{ role: 'toggleDevTools' }] : []),
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+  ]);
+  Menu.setApplicationMenu(menu);
 
   // Show loading screen immediately
   mainWindow.loadFile(path.join(__dirname, 'loading.html'));
@@ -206,10 +256,12 @@ async function createWindow() {
   await startPython(backendPort);
   startWhatsAppBridge(backendPort);
 
-  // Wait until Python is ready, then load the dashboard
+  // Wait until Python is ready, then load the right page
   const ready = await waitForBackend(backendPort);
   if (ready) {
-    mainWindow.loadURL(`http://127.0.0.1:${backendPort}`);
+    const authed = await checkAuth(backendPort);
+    mainWindow.loadURL(`http://127.0.0.1:${backendPort}${authed ? '/dashboard' : '/onboarding'}`);
+    // To debug: mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, 'error.html'));
   }
