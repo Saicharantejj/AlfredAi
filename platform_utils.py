@@ -28,8 +28,35 @@ def _run(command: List[str], *, check: bool = False, capture_output: bool = Fals
 def open_application(app_name: str) -> bool:
     try:
         if IS_MAC:
-            subprocess.Popen(["open", "-a", app_name])
-            return True
+            # Try the name as-is first, then Title Case, then strip .app suffix variants
+            candidates = [
+                app_name,
+                app_name.title(),
+                app_name.capitalize(),
+                app_name.lower(),
+            ]
+            # Also try without .app if provided, or with .app stripped
+            cleaned = app_name.replace(".app", "").strip()
+            if cleaned not in candidates:
+                candidates.append(cleaned)
+                candidates.append(cleaned.title())
+
+            for candidate in candidates:
+                result = subprocess.run(
+                    ["open", "-a", candidate],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.returncode == 0:
+                    return True
+
+            # Final fallback: use osascript which is more forgiving with app names
+            result = subprocess.run(
+                ["osascript", "-e", f'tell application "{app_name}" to activate'],
+                capture_output=True, text=True, timeout=5,
+            )
+            return result.returncode == 0
 
         if IS_WINDOWS:
             # Method 1: PowerShell Start-Process — works for most registered apps
